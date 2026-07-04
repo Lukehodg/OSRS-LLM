@@ -1,401 +1,511 @@
 /* ==========================================================================
-   RuneScribe — Old School RuneScape themed interface
-   Palette lifted from the OSRS client: stone browns, parchment tan,
-   gold trim, and the classic chat colours.
+   RuneScribe — modern dark interface with an OSRS gold soul.
+   Glass surfaces on near-black, amber accent, Space Grotesk display type.
    ========================================================================== */
 
 :root {
-  --stone-darkest: #1b1712;
-  --stone-dark: #2e2a21;
-  --stone: #494034;
-  --stone-light: #5d5343;
-  --stone-lighter: #71654f;
-  --parchment: #e2dbc8;
-  --parchment-dark: #d0c7ae;
-  --parchment-line: #b8ad90;
-  --gold: #d4af37;
-  --gold-dim: #8b7a3f;
-  --osrs-orange: #ff981f;
-  --osrs-yellow: #ffff00;
-  --osrs-red: #c02614;
-  --npc-red: #8b0000;
-  --player-blue: #1a1aa6;
-  --scry-purple: #9a5bd2;
-  --text-dark: #211d16;
+  --bg: #0b0d12;
+  --bg-raise: #12151d;
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-2: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.16);
 
-  --font-pixel: "VT323", "Courier New", monospace;
-  --font-runic: "Cinzel Decorative", "Georgia", serif;
+  --text: #e8e6e1;
+  --text-dim: #a19c92;
+  --text-faint: #6f6b63;
+
+  --gold: #e8b64c;
+  --gold-bright: #f6cf6f;
+  --gold-deep: #b07d1e;
+  --gold-glow: rgba(232, 182, 76, 0.35);
+
+  --teal: #5fd4b0;
+  --purple: #b18cf2;
+  --red: #ef6f5e;
+
+  --radius: 14px;
+  --radius-lg: 20px;
+
+  --font-display: "Space Grotesk", "Segoe UI", sans-serif;
+  --font-body: "Instrument Sans", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
 * { box-sizing: border-box; }
 
-html, body {
-  height: 100%;
-  margin: 0;
-}
+html, body { height: 100%; margin: 0; }
 
 body {
-  font-family: var(--font-pixel);
-  font-size: 20px;
-  color: var(--parchment);
-  background-color: #100d0a;
-  /* Layered dungeon backdrop: vignette + faint diagonal stonework */
-  background-image:
-    radial-gradient(ellipse at 50% -10%, rgba(255, 152, 31, 0.10), transparent 55%),
-    radial-gradient(ellipse at 50% 115%, rgba(0, 0, 0, 0.85), transparent 60%),
-    repeating-linear-gradient(45deg, rgba(255,255,255,0.012) 0 2px, transparent 2px 6px),
-    linear-gradient(#17130e, #0c0a07);
-  min-height: 100vh;
-  overflow-x: hidden;
+  font-family: var(--font-body);
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--bg);
+  overflow: hidden;
 }
 
-/* --------------------------------------------------------------------------
-   Ambient torches
-   -------------------------------------------------------------------------- */
-.torch {
+::selection { background: rgba(232, 182, 76, 0.3); }
+
+/* Ambient background: a slow-breathing amber aurora */
+.aurora {
   position: fixed;
-  top: 12vh;
-  width: 220px;
-  height: 320px;
-  pointer-events: none;
+  inset: 0;
   z-index: 0;
-  background: radial-gradient(ellipse at center,
-    rgba(255, 170, 60, 0.16) 0%,
-    rgba(255, 120, 20, 0.07) 45%,
-    transparent 70%);
-  animation: flicker 3.4s ease-in-out infinite;
+  pointer-events: none;
+  background:
+    radial-gradient(600px 420px at 78% -10%, rgba(232, 182, 76, 0.13), transparent 65%),
+    radial-gradient(700px 500px at -10% 110%, rgba(94, 70, 160, 0.14), transparent 65%),
+    radial-gradient(400px 300px at 20% 10%, rgba(95, 212, 176, 0.05), transparent 70%);
+  animation: breathe 14s ease-in-out infinite;
 }
-.torch-left  { left: -60px; }
-.torch-right { right: -60px; animation-delay: -1.7s; }
-
-@keyframes flicker {
-  0%, 100% { opacity: 0.85; transform: scale(1); }
-  25%      { opacity: 1.0;  transform: scale(1.06) translateY(-4px); }
-  55%      { opacity: 0.7;  transform: scale(0.97); }
-  80%      { opacity: 0.95; transform: scale(1.03) translateY(-2px); }
+@keyframes breathe {
+  0%, 100% { opacity: 0.8; }
+  50%      { opacity: 1; }
 }
 
 /* --------------------------------------------------------------------------
-   Page frame
+   Shell
    -------------------------------------------------------------------------- */
-.frame {
+.shell {
   position: relative;
   z-index: 1;
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 22px 18px 40px;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-/* --------------------------------------------------------------------------
-   Banner
-   -------------------------------------------------------------------------- */
-.banner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 26px;
-  padding: 10px 0 22px;
-  user-select: none;
-}
-
-.banner-rune {
-  font-size: 44px;
-  color: var(--gold-dim);
-  text-shadow: 0 0 18px rgba(212, 175, 55, 0.35);
-  animation: runeGlow 4s ease-in-out infinite;
-}
-.banner-rune:last-child { animation-delay: -2s; }
-
-@keyframes runeGlow {
-  0%, 100% { text-shadow: 0 0 10px rgba(212, 175, 55, 0.25); color: var(--gold-dim); }
-  50%      { text-shadow: 0 0 26px rgba(255, 200, 80, 0.65); color: var(--gold); }
-}
-
-.banner-text { text-align: center; }
-
-.banner h1 {
-  margin: 0;
-  font-family: var(--font-runic);
-  font-weight: 900;
-  font-size: clamp(40px, 6vw, 64px);
-  letter-spacing: 2px;
-  color: var(--osrs-yellow);
-  /* The classic RuneScape logo treatment: gold face, hard dark outline, warm glow */
-  text-shadow:
-    2px 2px 0 #4a3505,
-    -2px 2px 0 #4a3505,
-    2px -2px 0 #4a3505,
-    -2px -2px 0 #4a3505,
-    0 4px 14px rgba(0, 0, 0, 0.9),
-    0 0 34px rgba(255, 152, 31, 0.35);
-}
-
-.tagline {
-  margin: 6px 0 0;
-  color: var(--osrs-orange);
-  font-size: 22px;
-  text-shadow: 1px 1px 0 #000;
-}
-
-/* --------------------------------------------------------------------------
-   Layout
-   -------------------------------------------------------------------------- */
-.layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 20px;
-  align-items: start;
-  flex: 1;
+  grid-template-columns: 316px minmax(0, 1fr);
+  height: 100vh;
+  height: 100dvh;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
+/* --------------------------------------------------------------------------
+   Sidebar
+   -------------------------------------------------------------------------- */
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  position: sticky;
-  top: 20px;
+  gap: 22px;
+  padding: 22px 18px 16px;
+  border-right: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.008));
+  backdrop-filter: blur(14px);
+  overflow-y: auto;
 }
 
-/* --------------------------------------------------------------------------
-   Stone panels (the OSRS interface frame)
-   -------------------------------------------------------------------------- */
-.panel {
-  position: relative;
-  background:
-    repeating-linear-gradient(0deg, rgba(0,0,0,0.06) 0 1px, transparent 1px 3px),
-    linear-gradient(160deg, var(--stone-light), var(--stone) 40%, var(--stone-dark));
-  border: 3px solid var(--stone-darkest);
-  border-radius: 6px;
-  padding: 8px;
-  /* Beveled stone: light top-left inner edge, dark bottom-right, gold pinstripe */
-  box-shadow:
-    inset 0 0 0 2px var(--gold-dim),
-    inset 3px 3px 0 2px rgba(255, 235, 190, 0.16),
-    inset -3px -3px 0 2px rgba(0, 0, 0, 0.45),
-    0 10px 24px rgba(0, 0, 0, 0.65);
-}
-
-/* Riveted corners */
-.panel::before, .panel::after {
-  content: "";
-  position: absolute;
-  width: 9px; height: 9px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #f4e3ae, var(--gold) 45%, #6b5a20 90%);
-  box-shadow: 0 0 5px rgba(0,0,0,0.8);
-  z-index: 2;
-}
-.panel::before { top: 5px; left: 5px; }
-.panel::after  { bottom: 5px; right: 5px; }
-
-.panel-title {
-  font-family: var(--font-runic);
-  font-weight: 700;
-  text-align: center;
-  color: var(--osrs-orange);
-  text-shadow: 1px 1px 0 #000, 0 0 12px rgba(255, 152, 31, 0.35);
-  font-size: 19px;
-  letter-spacing: 1px;
-  padding: 6px 4px 10px;
+.brand {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 12px;
+  padding: 2px 4px;
 }
-.panel-title.small { font-size: 15px; padding: 4px 2px 8px; }
 
-.panel-title-gem {
-  width: 8px; height: 8px;
-  transform: rotate(45deg);
-  background: linear-gradient(135deg, #ffe9a8, var(--gold) 55%, #7a660f);
-  box-shadow: 0 0 8px rgba(212, 175, 55, 0.7);
+.brand-mark {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  color: #1c1403;
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold-deep));
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.14) inset, 0 6px 18px var(--gold-glow);
+}
+.brand-mark svg { width: 22px; height: 22px; }
+
+.brand-text { display: flex; flex-direction: column; line-height: 1.2; }
+
+.brand-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: 0.2px;
+  background: linear-gradient(90deg, var(--gold-bright), var(--gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.brand-sub { font-size: 12.5px; color: var(--text-dim); }
+
+.side-section { display: flex; flex-direction: column; gap: 10px; }
+.side-section.grow { flex: 1; min-height: 120px; }
+
+.side-heading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding-left: 4px;
+}
+
+/* Quick prompts */
+.quick-list { display: flex; flex-direction: column; gap: 8px; }
+
+.quick {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  font-family: var(--font-body);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+.quick:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: rgba(232, 182, 76, 0.45);
+  transform: translateY(-1px);
+}
+.quick:active:not(:disabled) { transform: translateY(0); }
+.quick:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.quick-icon {
+  font-size: 18px;
   flex: 0 0 auto;
+  filter: saturate(0.9);
 }
 
-/* --------------------------------------------------------------------------
-   Chat panel
-   -------------------------------------------------------------------------- */
-.chat-panel {
+.quick-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.quick-text strong { font-size: 13.5px; font-weight: 600; }
+.quick-text small { font-size: 12px; color: var(--text-dim); }
+
+/* Scrying feed */
+.scry-log {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 210px);
-  min-height: 480px;
+  gap: 7px;
+  overflow-y: auto;
+  padding: 2px 2px 6px;
 }
 
+.scry-empty {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-faint);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+
+.scry-entry {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 7px 10px;
+  animation: rise 0.25s ease-out;
+}
+.scry-entry .dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: var(--purple);
+  box-shadow: 0 0 8px var(--purple);
+  animation: pulse 1.1s ease-in-out infinite;
+}
+.scry-entry.done .dot   { background: var(--teal); box-shadow: 0 0 8px var(--teal); animation: none; }
+.scry-entry.failed .dot { background: var(--red);  box-shadow: 0 0 8px var(--red);  animation: none; }
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.35); opacity: 0.65; }
+}
+
+.side-footer {
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-faint);
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.side-footer a { color: var(--text-dim); text-decoration-color: var(--border-strong); }
+.side-footer a:hover { color: var(--gold); }
+.side-footer .muted { display: block; margin-top: 2px; }
+
+/* --------------------------------------------------------------------------
+   Chat column
+   -------------------------------------------------------------------------- */
+.chat {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 26px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(11, 13, 18, 0.65);
+  backdrop-filter: blur(14px);
+}
+
+.chat-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15.5px;
+}
+
+.presence {
+  width: 8px; height: 8px;
+  align-self: center;
+  border-radius: 50%;
+  background: var(--teal);
+  box-shadow: 0 0 10px var(--teal);
+}
+
+.chat-title-sub {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+
+.model-badge {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gold);
+  border: 1px solid rgba(232, 182, 76, 0.35);
+  background: rgba(232, 182, 76, 0.08);
+  border-radius: 999px;
+  padding: 4px 12px;
+  white-space: nowrap;
+}
+
+/* Messages */
 .chat-log {
   flex: 1;
   overflow-y: auto;
-  background:
-    repeating-linear-gradient(0deg, transparent 0 26px, rgba(120, 100, 60, 0.10) 26px 27px),
-    radial-gradient(ellipse at 50% 0%, #efe9d8, var(--parchment) 55%, var(--parchment-dark));
-  border: 2px solid var(--stone-darkest);
-  box-shadow: inset 0 0 26px rgba(90, 70, 40, 0.35);
-  border-radius: 3px;
-  padding: 14px 16px;
+  padding: 26px 26px 10px;
   scroll-behavior: smooth;
 }
 
-/* Parchment scrollbar */
-.chat-log::-webkit-scrollbar, .scry-log::-webkit-scrollbar { width: 14px; }
-.chat-log::-webkit-scrollbar-track, .scry-log::-webkit-scrollbar-track {
-  background: var(--stone-dark);
-  border: 1px solid var(--stone-darkest);
-}
-.chat-log::-webkit-scrollbar-thumb, .scry-log::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--stone-lighter), var(--stone));
-  border: 2px solid var(--stone-darkest);
-  border-radius: 3px;
+.chat-log > * {
+  max-width: 780px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-/* Player lines — classic "Name: message" chat, player-blue */
-.chat-line {
-  margin: 10px 0;
-  color: var(--player-blue);
-  text-shadow: 0.5px 0.5px 0 rgba(255,255,255,0.5);
-  word-wrap: break-word;
-  animation: lineIn 0.18s ease-out;
-}
-.chat-line .speaker { color: var(--text-dark); }
-
-@keyframes lineIn {
-  from { opacity: 0; transform: translateY(4px); }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: none; }
 }
 
-/* NPC dialogue box — the quest-dialogue look */
-.dialogue {
-  margin: 14px 2px;
-  background: linear-gradient(180deg, #ece5d2, #ddd4bc);
-  border: 2px solid #6d5f45;
-  border-radius: 4px;
-  box-shadow:
-    inset 0 0 0 1px #f5efdf,
-    inset 0 0 0 3px #a99a77,
-    2px 3px 0 rgba(60, 45, 25, 0.35);
-  padding: 10px 16px 12px;
-  animation: lineIn 0.22s ease-out;
+.msg { display: flex; gap: 14px; margin: 0 auto 22px; animation: rise 0.28s ease-out; }
+
+.msg.user { justify-content: flex-end; }
+
+.avatar {
+  width: 38px; height: 38px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  font-size: 19px;
+  border-radius: 12px;
+  background: linear-gradient(150deg, rgba(232,182,76,0.22), rgba(232,182,76,0.06));
+  border: 1px solid rgba(232, 182, 76, 0.35);
+  box-shadow: 0 4px 14px rgba(232, 182, 76, 0.12);
 }
 
-.dialogue-name {
-  text-align: center;
-  color: var(--npc-red);
-  font-size: 22px;
-  letter-spacing: 0.5px;
-  border-bottom: 1px solid var(--parchment-line);
-  padding-bottom: 4px;
-  margin-bottom: 8px;
-  text-shadow: 0.5px 0.5px 0 rgba(255,255,255,0.6);
+.msg-main { min-width: 0; flex: 1; }
+
+.msg-name {
+  font-family: var(--font-display);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: var(--gold);
+  margin-bottom: 5px;
 }
 
-.dialogue-body {
-  color: var(--text-dark);
-  line-height: 1.35;
+.msg-body {
+  color: var(--text);
+  font-size: 15.5px;
 }
-.dialogue-body p { margin: 0 0 10px; }
-.dialogue-body p:last-child { margin-bottom: 0; }
-.dialogue-body ul, .dialogue-body ol { margin: 4px 0 10px; padding-left: 26px; }
-.dialogue-body li { margin: 3px 0; }
-.dialogue-body strong { color: #7a1f00; }
-.dialogue-body em { color: #333; }
-.dialogue-body a { color: #14418f; }
-.dialogue-body h3, .dialogue-body h4 {
-  margin: 10px 0 6px;
-  color: var(--npc-red);
-  font-size: 21px;
-  font-weight: normal;
+.msg-body > :first-child { margin-top: 0; }
+.msg-body > :last-child { margin-bottom: 0; }
+.msg-body p { margin: 0 0 12px; }
+.msg-body ul, .msg-body ol { margin: 4px 0 12px; padding-left: 22px; }
+.msg-body li { margin: 4px 0; }
+.msg-body li::marker { color: var(--gold); }
+.msg-body strong { color: var(--gold-bright); font-weight: 600; }
+.msg-body em { color: var(--text-dim); }
+.msg-body a { color: var(--teal); text-decoration-color: rgba(95, 212, 176, 0.4); }
+.msg-body h3, .msg-body h4 {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gold);
+  margin: 16px 0 8px;
 }
-.dialogue-body code {
-  font-family: var(--font-pixel);
-  background: rgba(120, 100, 60, 0.18);
-  border: 1px solid var(--parchment-line);
-  border-radius: 3px;
-  padding: 0 5px;
+.msg-body code {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1px 6px;
 }
-.dialogue-body pre {
-  background: rgba(120, 100, 60, 0.14);
-  border: 1px solid var(--parchment-line);
-  border-radius: 3px;
-  padding: 8px 10px;
+.msg-body pre {
+  background: var(--bg-raise);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
   overflow-x: auto;
 }
-.dialogue-body pre code { background: none; border: none; padding: 0; }
+.msg-body pre code { background: none; border: none; padding: 0; }
 
-/* Blinking caret while the old man is speaking */
-.dialogue.streaming .dialogue-body::after {
-  content: "▌";
-  color: var(--osrs-red);
+/* Streaming caret */
+.msg.streaming .msg-body::after {
+  content: "";
+  display: inline-block;
+  width: 8px; height: 15px;
+  margin-left: 3px;
+  vertical-align: -2px;
+  border-radius: 2px;
+  background: var(--gold);
   animation: caret 0.9s steps(1) infinite;
 }
 @keyframes caret { 50% { opacity: 0; } }
 
-/* Scrying notices inside the chat (tool activity), game-message purple */
-.scry-line {
-  margin: 8px 0;
-  color: var(--scry-purple);
-  font-style: italic;
-  animation: lineIn 0.18s ease-out;
+/* User bubble */
+.bubble {
+  max-width: 82%;
+  background: linear-gradient(140deg, rgba(232,182,76,0.16), rgba(232,182,76,0.08));
+  border: 1px solid rgba(232, 182, 76, 0.30);
+  border-radius: var(--radius-lg);
+  border-bottom-right-radius: 6px;
+  padding: 11px 16px;
+  color: #f3ead4;
+  word-wrap: break-word;
 }
-.scry-line::before { content: "✦ "; }
 
-.error-line {
-  margin: 8px 0;
-  color: var(--osrs-red);
-  animation: lineIn 0.18s ease-out;
+/* Inline tool chips */
+.tool-chip {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 9px;
+  margin: -8px auto 20px;
+  margin-left: 52px;   /* aligns under assistant text, past the avatar */
+  font-size: 12.5px;
+  color: var(--text-dim);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 13px;
+  animation: rise 0.25s ease-out;
 }
-.error-line::before { content: "✖ "; }
+.tool-chip .spinner {
+  width: 12px; height: 12px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 2px solid rgba(177, 140, 242, 0.3);
+  border-top-color: var(--purple);
+  animation: spin 0.8s linear infinite;
+}
+.tool-chip.done .spinner {
+  border: none;
+  background: var(--teal);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/%3E%3C/svg%3E") center/contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/%3E%3C/svg%3E") center/contain no-repeat;
+  animation: none;
+}
+.tool-chip.failed .spinner {
+  border: none;
+  background: var(--red);
+  border-radius: 2px;
+  animation: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Error notice */
+.error-line {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: fit-content;
+  margin: 0 auto 20px;
+  font-size: 13.5px;
+  color: #f2b3a9;
+  background: rgba(239, 111, 94, 0.10);
+  border: 1px solid rgba(239, 111, 94, 0.35);
+  border-radius: var(--radius);
+  padding: 9px 14px;
+  animation: rise 0.25s ease-out;
+}
+.error-line::before { content: "⚠"; color: var(--red); }
 
 /* --------------------------------------------------------------------------
-   Status bar ("...is typing")
+   Composer
    -------------------------------------------------------------------------- */
-.status-bar[hidden] { display: none; }
+.composer-wrap {
+  padding: 6px 26px calc(14px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, transparent, rgba(11, 13, 18, 0.9) 40%);
+}
+.composer-wrap > * {
+  max-width: 780px;
+  margin-left: auto;
+  margin-right: auto;
+}
 
+.status-bar[hidden] { display: none; }
 .status-bar {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 6px 2px;
-  color: var(--osrs-yellow);
-  text-shadow: 1px 1px 0 #000;
-  font-size: 18px;
+  font-size: 13px;
+  color: var(--text-dim);
+  padding: 0 6px 8px;
 }
 
-.status-orb {
-  width: 12px; height: 12px;
+.typing-dots { display: inline-flex; gap: 4px; }
+.typing-dots i {
+  width: 5px; height: 5px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #d8f8ff, #37b9d8 55%, #0b4b63);
-  box-shadow: 0 0 10px rgba(70, 200, 235, 0.9);
-  animation: orbPulse 1.1s ease-in-out infinite;
+  background: var(--gold);
+  animation: bounce 1.2s ease-in-out infinite;
 }
-@keyframes orbPulse {
-  0%, 100% { transform: scale(1);   box-shadow: 0 0 6px  rgba(70,200,235,0.6); }
-  50%      { transform: scale(1.25); box-shadow: 0 0 14px rgba(70,200,235,1); }
+.typing-dots i:nth-child(2) { animation-delay: 0.15s; }
+.typing-dots i:nth-child(3) { animation-delay: 0.3s; }
+@keyframes bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30%           { transform: translateY(-4px); opacity: 1; }
 }
 
-/* --------------------------------------------------------------------------
-   Input row
-   -------------------------------------------------------------------------- */
-.chat-input-row {
+.composer {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 8px;
-  background: linear-gradient(180deg, var(--stone-dark), var(--stone-darkest));
-  border: 2px solid var(--stone-darkest);
-  box-shadow: inset 0 0 0 1px var(--gold-dim), inset 0 2px 6px rgba(0,0,0,0.6);
-  border-radius: 4px;
-  padding: 8px 10px;
+  gap: 8px;
+  background: var(--bg-raise);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 7px 7px 7px 20px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-
-.chat-prompt {
-  color: var(--osrs-yellow);
-  text-shadow: 1px 1px 0 #000;
-  white-space: nowrap;
-  font-size: 20px;
+.composer:focus-within {
+  border-color: rgba(232, 182, 76, 0.55);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45), 0 0 0 3px rgba(232, 182, 76, 0.12);
 }
-.chat-colon { color: var(--parchment); }
 
 #chat-input {
   flex: 1;
@@ -403,114 +513,77 @@ body {
   background: transparent;
   border: none;
   outline: none;
-  color: var(--osrs-yellow);
-  font-family: var(--font-pixel);
-  font-size: 20px;
-  caret-color: var(--osrs-yellow);
-  text-shadow: 1px 1px 0 #000;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  caret-color: var(--gold);
 }
-#chat-input::placeholder { color: #9c8f6d; text-shadow: none; }
+#chat-input::placeholder { color: var(--text-faint); }
+#chat-input:disabled { opacity: 0.6; }
 
 #send-btn {
-  font-family: var(--font-pixel);
-  font-size: 19px;
-  color: var(--osrs-yellow);
-  text-shadow: 1px 1px 0 #000;
-  background: linear-gradient(180deg, var(--stone-lighter), var(--stone) 50%, var(--stone-dark));
-  border: 2px solid var(--stone-darkest);
-  box-shadow: inset 0 0 0 1px var(--gold-dim), inset 0 1px 0 rgba(255,235,190,0.25);
-  border-radius: 4px;
-  padding: 5px 16px 6px;
+  width: 40px; height: 40px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  color: #241a05;
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold-deep));
+  border: none;
+  border-radius: 50%;
   cursor: pointer;
-  transition: filter 0.12s ease, transform 0.05s ease;
+  box-shadow: 0 4px 14px var(--gold-glow);
+  transition: transform 0.12s ease, filter 0.12s ease, opacity 0.12s ease;
 }
-#send-btn:hover:not(:disabled) { filter: brightness(1.22); }
-#send-btn:active:not(:disabled) { transform: translateY(1px); }
-#send-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-.send-icon { color: var(--osrs-orange); }
+#send-btn svg { width: 18px; height: 18px; }
+#send-btn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+#send-btn:active:not(:disabled) { transform: translateY(0) scale(0.96); }
+#send-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+
+.composer-hint {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
 
 /* --------------------------------------------------------------------------
-   Sidebar
+   Scrollbars
    -------------------------------------------------------------------------- */
-.quick-list {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 2px 4px 6px;
+.chat-log::-webkit-scrollbar,
+.sidebar::-webkit-scrollbar,
+.scry-log::-webkit-scrollbar { width: 10px; }
+.chat-log::-webkit-scrollbar-thumb,
+.sidebar::-webkit-scrollbar-thumb,
+.scry-log::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.10);
+  border: 3px solid var(--bg);
+  border-radius: 8px;
 }
-
-.quick {
-  font-family: var(--font-pixel);
-  font-size: 18px;
-  text-align: left;
-  color: var(--parchment);
-  text-shadow: 1px 1px 0 #000;
-  background: linear-gradient(180deg, rgba(255,235,190,0.07), rgba(0,0,0,0.18));
-  border: 2px solid var(--stone-darkest);
-  box-shadow: inset 0 0 0 1px rgba(139, 122, 63, 0.55);
-  border-radius: 4px;
-  padding: 8px 10px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  transition: all 0.12s ease;
-}
-.quick:hover:not(:disabled) {
-  color: var(--osrs-yellow);
-  border-color: var(--gold-dim);
-  box-shadow: inset 0 0 0 1px var(--gold), 0 0 12px rgba(212, 175, 55, 0.25);
-  transform: translateX(2px);
-}
-.quick:disabled { opacity: 0.5; cursor: not-allowed; }
-.quick-icon { font-size: 20px; flex: 0 0 auto; }
-
-/* Scrying log */
-.scry-log {
-  max-height: 240px;
-  overflow-y: auto;
-  padding: 2px 6px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 17px;
-}
-
-.scry-empty { color: #a79b7d; text-shadow: 1px 1px 0 #000; font-style: italic; }
-
-.scry-entry {
-  color: var(--scry-purple);
-  text-shadow: 1px 1px 0 #000;
-  border-left: 3px solid var(--scry-purple);
-  padding-left: 8px;
-  animation: lineIn 0.2s ease-out;
-  word-break: break-word;
-}
-.scry-entry.done { color: #7fd67f; border-left-color: #7fd67f; }
-.scry-entry.failed { color: #e06a5a; border-left-color: #e06a5a; }
-.scry-entry .scry-what { color: var(--parchment); }
-
-.footer-note {
-  text-align: center;
-  font-size: 15px;
-  color: #8d8168;
-  text-shadow: 1px 1px 0 #000;
-  line-height: 1.5;
-}
-.footer-note a { color: var(--gold-dim); }
-.footer-note a:hover { color: var(--gold); }
+.chat-log::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.18); }
 
 /* --------------------------------------------------------------------------
    Responsive
    -------------------------------------------------------------------------- */
-@media (max-width: 900px) {
-  .layout { grid-template-columns: minmax(0, 1fr); }
-  .layout > *, .sidebar > * { min-width: 0; }
-  .sidebar { position: static; }
-  .chat-panel { height: 70vh; }
-  .torch { display: none; }
-  .banner { gap: 12px; }
-  .banner-rune { display: none; }
-  .banner h1 { font-size: clamp(30px, 9vw, 48px); }
-  .tagline { font-size: 18px; }
+@media (max-width: 860px) {
+  body { overflow: auto; }
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+  .sidebar {
+    order: 2;
+    border-right: none;
+    border-top: 1px solid var(--border);
+  }
+  .side-section.grow { min-height: 0; }
+  .chat { height: 100vh; height: 100dvh; }
+  .chat-header { padding: 12px 16px; }
+  .chat-title-sub { display: none; }
+  .chat-log { padding: 18px 14px 8px; }
+  .composer-wrap { padding-left: 14px; padding-right: 14px; }
+  .tool-chip { margin-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }

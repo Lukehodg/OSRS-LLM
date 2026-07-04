@@ -1,5 +1,5 @@
-/* RuneScribe chat client — streams SSE from /api/chat and renders
-   the Wise Old Man's replies as OSRS-style dialogue boxes. */
+/* RuneScribe chat client — streams SSE from /api/chat and renders replies
+   as modern chat messages with inline tool-activity chips. */
 
 const chatLog = document.getElementById("chat-log");
 const form = document.getElementById("chat-form");
@@ -14,9 +14,9 @@ const history = [];
 let busy = false;
 
 const TOOL_LABELS = {
-  get_player_stats: (i) => `Scrying the hiscores for “${i.player ?? "…"}”`,
-  get_ge_price: (i) => `Consulting the Grand Exchange about “${i.item_name ?? "…"}”`,
-  search_wiki: (i) => `Leafing through the Wiki for “${i.query ?? "…"}”`,
+  get_player_stats: (i) => `Hiscores · ${i.player ?? "…"}`,
+  get_ge_price: (i) => `Grand Exchange · ${i.item_name ?? "…"}`,
+  search_wiki: (i) => `OSRS Wiki · ${i.query ?? "…"}`,
 };
 
 const THINKING_LINES = [
@@ -97,29 +97,35 @@ function scrollToBottom() {
   chatLog.scrollTop = chatLog.scrollHeight;
 }
 
-function addPlayerLine(text) {
+function addUserMessage(text) {
   const div = document.createElement("div");
-  div.className = "chat-line";
-  div.innerHTML = `<span class="speaker">You:</span> ${escapeHtml(text)}`;
+  div.className = "msg user";
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.textContent = text;
+  div.appendChild(bubble);
   chatLog.appendChild(div);
   scrollToBottom();
 }
 
-function addDialogue() {
+function addAssistantMessage() {
   const div = document.createElement("div");
-  div.className = "dialogue streaming";
+  div.className = "msg assistant streaming";
   div.innerHTML =
-    '<div class="dialogue-name">Wise Old Man</div><div class="dialogue-body"></div>';
+    '<div class="avatar" aria-hidden="true">🧙</div>' +
+    '<div class="msg-main"><div class="msg-name">Wise Old Man</div>' +
+    '<div class="msg-body"></div></div>';
   chatLog.appendChild(div);
   return div;
 }
 
-function addScryLine(text) {
+function addToolChip(label) {
   const div = document.createElement("div");
-  div.className = "scry-line";
-  div.textContent = text;
+  div.className = "tool-chip";
+  div.innerHTML = `<span class="spinner" aria-hidden="true"></span><span>${escapeHtml(label)}</span>`;
   chatLog.appendChild(div);
   scrollToBottom();
+  return div;
 }
 
 function addErrorLine(text) {
@@ -130,12 +136,12 @@ function addErrorLine(text) {
   scrollToBottom();
 }
 
-function addScryEntry(text) {
+function addScryEntry(label) {
   const empty = scryLog.querySelector(".scry-empty");
   if (empty) empty.remove();
   const div = document.createElement("div");
   div.className = "scry-entry";
-  div.innerHTML = `<span class="scry-what">${escapeHtml(text)}</span>`;
+  div.innerHTML = `<span class="dot" aria-hidden="true"></span><span>${escapeHtml(label)}</span>`;
   scryLog.appendChild(div);
   scryLog.scrollTop = scryLog.scrollHeight;
   return div;
@@ -163,17 +169,17 @@ async function sendMessage(text) {
   if (busy || !text.trim()) return;
   const userText = text.trim();
 
-  addPlayerLine(userText);
+  addUserMessage(userText);
   history.push({ role: "user", content: userText });
   setBusy(true);
 
-  let dialogue = null;
+  let msg = null;
   let body = null;
   let assistantText = "";
-  const pendingScries = [];
+  const pending = []; // [{chip, entry}] for in-flight tool calls
 
-  const finishDialogue = () => {
-    if (dialogue) dialogue.classList.remove("streaming");
+  const finishMessage = () => {
+    if (msg) msg.classList.remove("streaming");
   };
 
   try {
@@ -206,29 +212,29 @@ async function sendMessage(text) {
         try { event = JSON.parse(dataLine.slice(6)); } catch { continue; }
 
         if (event.type === "text") {
-          if (!dialogue) {
-            dialogue = addDialogue();
-            body = dialogue.querySelector(".dialogue-body");
+          if (!msg) {
+            msg = addAssistantMessage();
+            body = msg.querySelector(".msg-body");
           }
           assistantText += event.text;
           body.innerHTML = renderMarkdown(assistantText);
           scrollToBottom();
         } else if (event.type === "tool_start") {
-          // Starting a tool means the current dialogue block (if any) is done
-          // narrating for now; a fresh one opens when text resumes.
-          finishDialogue();
+          // A tool call closes the current message block; a fresh one opens
+          // when text resumes after the results come back.
+          finishMessage();
           if (assistantText.trim()) history.push({ role: "assistant", content: assistantText });
-          dialogue = null; body = null; assistantText = "";
+          msg = null; body = null; assistantText = "";
 
-          const label = (TOOL_LABELS[event.name] || (() => `Casting ${event.name}`))(
-            event.input || {}
-          );
-          addScryLine(label + "…");
-          pendingScries.push(addScryEntry(label));
-          statusText.textContent = label + "…";
+          const label = (TOOL_LABELS[event.name] || (() => event.name))(event.input || {});
+          pending.push({ chip: addToolChip(label), entry: addScryEntry(label) });
+          statusText.textContent = "Scrying…";
         } else if (event.type === "tool_end") {
-          const entry = pendingScries.shift();
-          if (entry) entry.classList.add(event.ok ? "done" : "failed");
+          const p = pending.shift();
+          if (p) {
+            p.chip.classList.add(event.ok ? "done" : "failed");
+            p.entry.classList.add(event.ok ? "done" : "failed");
+          }
           statusText.textContent =
             THINKING_LINES[Math.floor(Math.random() * THINKING_LINES.length)];
         } else if (event.type === "error") {
@@ -239,7 +245,7 @@ async function sendMessage(text) {
   } catch (err) {
     addErrorLine(err.message || "The connection to the old man's study was lost.");
   } finally {
-    finishDialogue();
+    finishMessage();
     if (assistantText.trim()) history.push({ role: "assistant", content: assistantText });
     setBusy(false);
     scrollToBottom();
