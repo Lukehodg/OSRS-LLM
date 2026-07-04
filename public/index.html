@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RuneScribe — The Wise Old Man of Gielinor</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧙</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=VT323&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="torch torch-left" aria-hidden="true"></div>
+  <div class="torch torch-right" aria-hidden="true"></div>
+
+  <div class="frame">
+    <header class="banner">
+      <div class="banner-rune" aria-hidden="true">ᚱ</div>
+      <div class="banner-text">
+        <h1>RuneScribe</h1>
+        <p class="tagline">The Wise Old Man of Gielinor &mdash; at your service, adventurer</p>
+      </div>
+      <div class="banner-rune" aria-hidden="true">ᛉ</div>
+    </header>
+
+    <main class="layout">
+      <!-- Chat panel, styled after the in-game chatbox -->
+      <section class="panel chat-panel" aria-label="Chat">
+        <div class="panel-title">
+          <span class="panel-title-gem" aria-hidden="true"></span>
+          Chat with the Wise Old Man
+          <span class="panel-title-gem" aria-hidden="true"></span>
+        </div>
+
+        <div id="chat-log" class="chat-log" aria-live="polite">
+          <div class="dialogue" data-role="assistant">
+            <div class="dialogue-name">Wise Old Man</div>
+            <div class="dialogue-body">
+              <p>Ah, an adventurer! Welcome to my study. I know a thing or two about
+              Gielinor &mdash; quests, skilling, bossing, the Grand Exchange&hellip;
+              I can even scry live prices and hiscores.</p>
+              <p>What knowledge do you seek?</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="status-bar" class="status-bar" hidden>
+          <span class="status-orb" aria-hidden="true"></span>
+          <span id="status-text">The Wise Old Man strokes his beard&hellip;</span>
+        </div>
+
+        <form id="chat-form" class="chat-input-row" autocomplete="off">
+          <label class="chat-prompt" for="chat-input">Speak<span class="chat-colon">:</span></label>
+          <input id="chat-input" type="text" placeholder="Ask about quests, prices, players, gear…"
+                 maxlength="2000" spellcheck="false" />
+          <button id="send-btn" type="submit" title="Send">
+            <span class="send-icon" aria-hidden="true">⚔</span> Send
+          </button>
+        </form>
+      </section>
+
+      <!-- Sidebar: quick quests + scrying log -->
+      <aside class="sidebar">
+        <section class="panel side-panel" aria-label="Quick questions">
+          <div class="panel-title small">
+            <span class="panel-title-gem" aria-hidden="true"></span>
+            Adventurer's Log
+            <span class="panel-title-gem" aria-hidden="true"></span>
+          </div>
+          <div class="quick-list">
+            <button class="quick" data-prompt="What's the current Grand Exchange price of a Twisted bow, and is it worth buying for CoX?">
+              <span class="quick-icon">💰</span> Price-check the Twisted bow
+            </button>
+            <button class="quick" data-prompt="Look up the player Lynx Titan on the hiscores and tell me something impressive about their account.">
+              <span class="quick-icon">🏆</span> Scry a legend's hiscores
+            </button>
+            <button class="quick" data-prompt="I'm a mid-level account (base 70s). Give me a gear and quest roadmap to kill Vorkath.">
+              <span class="quick-icon">🐉</span> Road to Vorkath
+            </button>
+            <button class="quick" data-prompt="What are the best money makers right now for a member with 80+ combat and mid-level skills?">
+              <span class="quick-icon">🪙</span> Best money makers
+            </button>
+            <button class="quick" data-prompt="Explain the fastest route to a fire cape for a level 90 combat pure, including inventory setup.">
+              <span class="quick-icon">🔥</span> Earn me a fire cape
+            </button>
+            <button class="quick" data-prompt="Which quests should every new member rush first, and why?">
+              <span class="quick-icon">🗺️</span> Essential early quests
+            </button>
+          </div>
+        </section>
+
+        <section class="panel side-panel" aria-label="Scrying log">
+          <div class="panel-title small">
+            <span class="panel-title-gem" aria-hidden="true"></span>
+            Scrying Orb
+            <span class="panel-title-gem" aria-hidden="true"></span>
+          </div>
+          <div id="scry-log" class="scry-log">
+            <div class="scry-empty">The orb is dormant. When the old man consults the
+            hiscores, the Exchange, or the Wiki, his scrying will appear here.</div>
+          </div>
+        </section>
+
+        <div class="footer-note">
+          Live data: OSRS Hiscores &middot; <a href="https://prices.runescape.wiki" target="_blank" rel="noopener">prices.runescape.wiki</a> &middot; <a href="https://oldschool.runescape.wiki" target="_blank" rel="noopener">OSRS Wiki</a><br/>
+          A fan project. Not affiliated with Jagex.
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

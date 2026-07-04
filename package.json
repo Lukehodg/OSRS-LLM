@@ -1,0 +1,18 @@
+{
+  "name": "osrs-llm",
+  "version": "1.0.0",
+  "description": "RuneScribe — an Old School RuneScape AI sage powered by Claude, with live hiscores, Grand Exchange prices, and OSRS Wiki lookups.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.110.0",
+    "express": "^4.21.2"
+  }
+}

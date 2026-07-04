@@ -1,0 +1,516 @@
+/* ==========================================================================
+   RuneScribe — Old School RuneScape themed interface
+   Palette lifted from the OSRS client: stone browns, parchment tan,
+   gold trim, and the classic chat colours.
+   ========================================================================== */
+
+:root {
+  --stone-darkest: #1b1712;
+  --stone-dark: #2e2a21;
+  --stone: #494034;
+  --stone-light: #5d5343;
+  --stone-lighter: #71654f;
+  --parchment: #e2dbc8;
+  --parchment-dark: #d0c7ae;
+  --parchment-line: #b8ad90;
+  --gold: #d4af37;
+  --gold-dim: #8b7a3f;
+  --osrs-orange: #ff981f;
+  --osrs-yellow: #ffff00;
+  --osrs-red: #c02614;
+  --npc-red: #8b0000;
+  --player-blue: #1a1aa6;
+  --scry-purple: #9a5bd2;
+  --text-dark: #211d16;
+
+  --font-pixel: "VT323", "Courier New", monospace;
+  --font-runic: "Cinzel Decorative", "Georgia", serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-pixel);
+  font-size: 20px;
+  color: var(--parchment);
+  background-color: #100d0a;
+  /* Layered dungeon backdrop: vignette + faint diagonal stonework */
+  background-image:
+    radial-gradient(ellipse at 50% -10%, rgba(255, 152, 31, 0.10), transparent 55%),
+    radial-gradient(ellipse at 50% 115%, rgba(0, 0, 0, 0.85), transparent 60%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.012) 0 2px, transparent 2px 6px),
+    linear-gradient(#17130e, #0c0a07);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* --------------------------------------------------------------------------
+   Ambient torches
+   -------------------------------------------------------------------------- */
+.torch {
+  position: fixed;
+  top: 12vh;
+  width: 220px;
+  height: 320px;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(ellipse at center,
+    rgba(255, 170, 60, 0.16) 0%,
+    rgba(255, 120, 20, 0.07) 45%,
+    transparent 70%);
+  animation: flicker 3.4s ease-in-out infinite;
+}
+.torch-left  { left: -60px; }
+.torch-right { right: -60px; animation-delay: -1.7s; }
+
+@keyframes flicker {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  25%      { opacity: 1.0;  transform: scale(1.06) translateY(-4px); }
+  55%      { opacity: 0.7;  transform: scale(0.97); }
+  80%      { opacity: 0.95; transform: scale(1.03) translateY(-2px); }
+}
+
+/* --------------------------------------------------------------------------
+   Page frame
+   -------------------------------------------------------------------------- */
+.frame {
+  position: relative;
+  z-index: 1;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 22px 18px 40px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* --------------------------------------------------------------------------
+   Banner
+   -------------------------------------------------------------------------- */
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  padding: 10px 0 22px;
+  user-select: none;
+}
+
+.banner-rune {
+  font-size: 44px;
+  color: var(--gold-dim);
+  text-shadow: 0 0 18px rgba(212, 175, 55, 0.35);
+  animation: runeGlow 4s ease-in-out infinite;
+}
+.banner-rune:last-child { animation-delay: -2s; }
+
+@keyframes runeGlow {
+  0%, 100% { text-shadow: 0 0 10px rgba(212, 175, 55, 0.25); color: var(--gold-dim); }
+  50%      { text-shadow: 0 0 26px rgba(255, 200, 80, 0.65); color: var(--gold); }
+}
+
+.banner-text { text-align: center; }
+
+.banner h1 {
+  margin: 0;
+  font-family: var(--font-runic);
+  font-weight: 900;
+  font-size: clamp(40px, 6vw, 64px);
+  letter-spacing: 2px;
+  color: var(--osrs-yellow);
+  /* The classic RuneScape logo treatment: gold face, hard dark outline, warm glow */
+  text-shadow:
+    2px 2px 0 #4a3505,
+    -2px 2px 0 #4a3505,
+    2px -2px 0 #4a3505,
+    -2px -2px 0 #4a3505,
+    0 4px 14px rgba(0, 0, 0, 0.9),
+    0 0 34px rgba(255, 152, 31, 0.35);
+}
+
+.tagline {
+  margin: 6px 0 0;
+  color: var(--osrs-orange);
+  font-size: 22px;
+  text-shadow: 1px 1px 0 #000;
+}
+
+/* --------------------------------------------------------------------------
+   Layout
+   -------------------------------------------------------------------------- */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+  align-items: start;
+  flex: 1;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: sticky;
+  top: 20px;
+}
+
+/* --------------------------------------------------------------------------
+   Stone panels (the OSRS interface frame)
+   -------------------------------------------------------------------------- */
+.panel {
+  position: relative;
+  background:
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.06) 0 1px, transparent 1px 3px),
+    linear-gradient(160deg, var(--stone-light), var(--stone) 40%, var(--stone-dark));
+  border: 3px solid var(--stone-darkest);
+  border-radius: 6px;
+  padding: 8px;
+  /* Beveled stone: light top-left inner edge, dark bottom-right, gold pinstripe */
+  box-shadow:
+    inset 0 0 0 2px var(--gold-dim),
+    inset 3px 3px 0 2px rgba(255, 235, 190, 0.16),
+    inset -3px -3px 0 2px rgba(0, 0, 0, 0.45),
+    0 10px 24px rgba(0, 0, 0, 0.65);
+}
+
+/* Riveted corners */
+.panel::before, .panel::after {
+  content: "";
+  position: absolute;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f4e3ae, var(--gold) 45%, #6b5a20 90%);
+  box-shadow: 0 0 5px rgba(0,0,0,0.8);
+  z-index: 2;
+}
+.panel::before { top: 5px; left: 5px; }
+.panel::after  { bottom: 5px; right: 5px; }
+
+.panel-title {
+  font-family: var(--font-runic);
+  font-weight: 700;
+  text-align: center;
+  color: var(--osrs-orange);
+  text-shadow: 1px 1px 0 #000, 0 0 12px rgba(255, 152, 31, 0.35);
+  font-size: 19px;
+  letter-spacing: 1px;
+  padding: 6px 4px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.panel-title.small { font-size: 15px; padding: 4px 2px 8px; }
+
+.panel-title-gem {
+  width: 8px; height: 8px;
+  transform: rotate(45deg);
+  background: linear-gradient(135deg, #ffe9a8, var(--gold) 55%, #7a660f);
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.7);
+  flex: 0 0 auto;
+}
+
+/* --------------------------------------------------------------------------
+   Chat panel
+   -------------------------------------------------------------------------- */
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 210px);
+  min-height: 480px;
+}
+
+.chat-log {
+  flex: 1;
+  overflow-y: auto;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 26px, rgba(120, 100, 60, 0.10) 26px 27px),
+    radial-gradient(ellipse at 50% 0%, #efe9d8, var(--parchment) 55%, var(--parchment-dark));
+  border: 2px solid var(--stone-darkest);
+  box-shadow: inset 0 0 26px rgba(90, 70, 40, 0.35);
+  border-radius: 3px;
+  padding: 14px 16px;
+  scroll-behavior: smooth;
+}
+
+/* Parchment scrollbar */
+.chat-log::-webkit-scrollbar, .scry-log::-webkit-scrollbar { width: 14px; }
+.chat-log::-webkit-scrollbar-track, .scry-log::-webkit-scrollbar-track {
+  background: var(--stone-dark);
+  border: 1px solid var(--stone-darkest);
+}
+.chat-log::-webkit-scrollbar-thumb, .scry-log::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--stone-lighter), var(--stone));
+  border: 2px solid var(--stone-darkest);
+  border-radius: 3px;
+}
+
+/* Player lines — classic "Name: message" chat, player-blue */
+.chat-line {
+  margin: 10px 0;
+  color: var(--player-blue);
+  text-shadow: 0.5px 0.5px 0 rgba(255,255,255,0.5);
+  word-wrap: break-word;
+  animation: lineIn 0.18s ease-out;
+}
+.chat-line .speaker { color: var(--text-dark); }
+
+@keyframes lineIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* NPC dialogue box — the quest-dialogue look */
+.dialogue {
+  margin: 14px 2px;
+  background: linear-gradient(180deg, #ece5d2, #ddd4bc);
+  border: 2px solid #6d5f45;
+  border-radius: 4px;
+  box-shadow:
+    inset 0 0 0 1px #f5efdf,
+    inset 0 0 0 3px #a99a77,
+    2px 3px 0 rgba(60, 45, 25, 0.35);
+  padding: 10px 16px 12px;
+  animation: lineIn 0.22s ease-out;
+}
+
+.dialogue-name {
+  text-align: center;
+  color: var(--npc-red);
+  font-size: 22px;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--parchment-line);
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+  text-shadow: 0.5px 0.5px 0 rgba(255,255,255,0.6);
+}
+
+.dialogue-body {
+  color: var(--text-dark);
+  line-height: 1.35;
+}
+.dialogue-body p { margin: 0 0 10px; }
+.dialogue-body p:last-child { margin-bottom: 0; }
+.dialogue-body ul, .dialogue-body ol { margin: 4px 0 10px; padding-left: 26px; }
+.dialogue-body li { margin: 3px 0; }
+.dialogue-body strong { color: #7a1f00; }
+.dialogue-body em { color: #333; }
+.dialogue-body a { color: #14418f; }
+.dialogue-body h3, .dialogue-body h4 {
+  margin: 10px 0 6px;
+  color: var(--npc-red);
+  font-size: 21px;
+  font-weight: normal;
+}
+.dialogue-body code {
+  font-family: var(--font-pixel);
+  background: rgba(120, 100, 60, 0.18);
+  border: 1px solid var(--parchment-line);
+  border-radius: 3px;
+  padding: 0 5px;
+}
+.dialogue-body pre {
+  background: rgba(120, 100, 60, 0.14);
+  border: 1px solid var(--parchment-line);
+  border-radius: 3px;
+  padding: 8px 10px;
+  overflow-x: auto;
+}
+.dialogue-body pre code { background: none; border: none; padding: 0; }
+
+/* Blinking caret while the old man is speaking */
+.dialogue.streaming .dialogue-body::after {
+  content: "▌";
+  color: var(--osrs-red);
+  animation: caret 0.9s steps(1) infinite;
+}
+@keyframes caret { 50% { opacity: 0; } }
+
+/* Scrying notices inside the chat (tool activity), game-message purple */
+.scry-line {
+  margin: 8px 0;
+  color: var(--scry-purple);
+  font-style: italic;
+  animation: lineIn 0.18s ease-out;
+}
+.scry-line::before { content: "✦ "; }
+
+.error-line {
+  margin: 8px 0;
+  color: var(--osrs-red);
+  animation: lineIn 0.18s ease-out;
+}
+.error-line::before { content: "✖ "; }
+
+/* --------------------------------------------------------------------------
+   Status bar ("...is typing")
+   -------------------------------------------------------------------------- */
+.status-bar[hidden] { display: none; }
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 6px 2px;
+  color: var(--osrs-yellow);
+  text-shadow: 1px 1px 0 #000;
+  font-size: 18px;
+}
+
+.status-orb {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #d8f8ff, #37b9d8 55%, #0b4b63);
+  box-shadow: 0 0 10px rgba(70, 200, 235, 0.9);
+  animation: orbPulse 1.1s ease-in-out infinite;
+}
+@keyframes orbPulse {
+  0%, 100% { transform: scale(1);   box-shadow: 0 0 6px  rgba(70,200,235,0.6); }
+  50%      { transform: scale(1.25); box-shadow: 0 0 14px rgba(70,200,235,1); }
+}
+
+/* --------------------------------------------------------------------------
+   Input row
+   -------------------------------------------------------------------------- */
+.chat-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  background: linear-gradient(180deg, var(--stone-dark), var(--stone-darkest));
+  border: 2px solid var(--stone-darkest);
+  box-shadow: inset 0 0 0 1px var(--gold-dim), inset 0 2px 6px rgba(0,0,0,0.6);
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+
+.chat-prompt {
+  color: var(--osrs-yellow);
+  text-shadow: 1px 1px 0 #000;
+  white-space: nowrap;
+  font-size: 20px;
+}
+.chat-colon { color: var(--parchment); }
+
+#chat-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--osrs-yellow);
+  font-family: var(--font-pixel);
+  font-size: 20px;
+  caret-color: var(--osrs-yellow);
+  text-shadow: 1px 1px 0 #000;
+}
+#chat-input::placeholder { color: #9c8f6d; text-shadow: none; }
+
+#send-btn {
+  font-family: var(--font-pixel);
+  font-size: 19px;
+  color: var(--osrs-yellow);
+  text-shadow: 1px 1px 0 #000;
+  background: linear-gradient(180deg, var(--stone-lighter), var(--stone) 50%, var(--stone-dark));
+  border: 2px solid var(--stone-darkest);
+  box-shadow: inset 0 0 0 1px var(--gold-dim), inset 0 1px 0 rgba(255,235,190,0.25);
+  border-radius: 4px;
+  padding: 5px 16px 6px;
+  cursor: pointer;
+  transition: filter 0.12s ease, transform 0.05s ease;
+}
+#send-btn:hover:not(:disabled) { filter: brightness(1.22); }
+#send-btn:active:not(:disabled) { transform: translateY(1px); }
+#send-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.send-icon { color: var(--osrs-orange); }
+
+/* --------------------------------------------------------------------------
+   Sidebar
+   -------------------------------------------------------------------------- */
+.quick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 2px 4px 6px;
+}
+
+.quick {
+  font-family: var(--font-pixel);
+  font-size: 18px;
+  text-align: left;
+  color: var(--parchment);
+  text-shadow: 1px 1px 0 #000;
+  background: linear-gradient(180deg, rgba(255,235,190,0.07), rgba(0,0,0,0.18));
+  border: 2px solid var(--stone-darkest);
+  box-shadow: inset 0 0 0 1px rgba(139, 122, 63, 0.55);
+  border-radius: 4px;
+  padding: 8px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  transition: all 0.12s ease;
+}
+.quick:hover:not(:disabled) {
+  color: var(--osrs-yellow);
+  border-color: var(--gold-dim);
+  box-shadow: inset 0 0 0 1px var(--gold), 0 0 12px rgba(212, 175, 55, 0.25);
+  transform: translateX(2px);
+}
+.quick:disabled { opacity: 0.5; cursor: not-allowed; }
+.quick-icon { font-size: 20px; flex: 0 0 auto; }
+
+/* Scrying log */
+.scry-log {
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 2px 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 17px;
+}
+
+.scry-empty { color: #a79b7d; text-shadow: 1px 1px 0 #000; font-style: italic; }
+
+.scry-entry {
+  color: var(--scry-purple);
+  text-shadow: 1px 1px 0 #000;
+  border-left: 3px solid var(--scry-purple);
+  padding-left: 8px;
+  animation: lineIn 0.2s ease-out;
+  word-break: break-word;
+}
+.scry-entry.done { color: #7fd67f; border-left-color: #7fd67f; }
+.scry-entry.failed { color: #e06a5a; border-left-color: #e06a5a; }
+.scry-entry .scry-what { color: var(--parchment); }
+
+.footer-note {
+  text-align: center;
+  font-size: 15px;
+  color: #8d8168;
+  text-shadow: 1px 1px 0 #000;
+  line-height: 1.5;
+}
+.footer-note a { color: var(--gold-dim); }
+.footer-note a:hover { color: var(--gold); }
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .layout > *, .sidebar > * { min-width: 0; }
+  .sidebar { position: static; }
+  .chat-panel { height: 70vh; }
+  .torch { display: none; }
+  .banner { gap: 12px; }
+  .banner-rune { display: none; }
+  .banner h1 { font-size: clamp(30px, 9vw, 48px); }
+  .tagline { font-size: 18px; }
+}
