@@ -51,8 +51,10 @@ Clicking the **Exchange** constellation opens a Bloomberg-style **Grand Exchange
 
 - **Ticker search** over every tradeable item.
 - **Live quote panel** — instant-buy/sell, **margin after the 2% GE sales tax** (capped 5m, none under 100gp), ROI, profit-per-buy-limit, 1h volume, high alch.
-- **Interactive price + volume chart** with 5m / 1h / 6h / 24h timeframes (drawn on canvas from the wiki timeseries; instant-buy line coloured green/red by trend, volume bars beneath).
+- **Interactive price + volume chart** — **line or candlestick**, with 5m / 1h / 6h / 24h timeframes (drawn on canvas from the wiki timeseries; coloured green/red by trend, volume bars beneath).
 - **Screeners** — *Most Traded* (by 1h volume) and *Best Flips* (ranked by after-tax profit per buy-limit, filtered for liquidity), each clickable to load the item.
+- **Watchlist** — ★ pin any item; the *Watch* tab lists them with live prices (saved per device).
+- **Price alerts** — 🔔 set an alert (instant-buy / instant-sell / margin crosses a threshold); while the page is open a poller checks every minute and fires an in-terminal toast (and a browser notification, if permitted). Alerts persist and re-arm once the condition clears.
 - **◆ Analyse market** — the sage gives a trading-desk read (flip viability, liquidity, trend, risks).
 - **◆ AI price forecast** — feeds the recent price/volume series to Claude for a structured near-term prediction (**Outlook ▲/▼/► + confidence**, likely range, drivers, and what would flip the call). It's framed honestly: a game economy driven by players and Jagex updates can't be truly predicted, so it's an informed read, never a guarantee.
 

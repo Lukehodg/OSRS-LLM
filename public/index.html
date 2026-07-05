@@ -161,11 +161,17 @@
           <div class="ge-chart-wrap">
             <div class="ge-chart-head">
               <span id="ge-chart-title" class="ge-chart-title">PRICE HISTORY</span>
-              <div class="ge-tabs" id="ge-tabs" role="tablist">
-                <button class="ge-tab" data-step="5m" type="button">5m</button>
-                <button class="ge-tab active" data-step="1h" type="button">1h</button>
-                <button class="ge-tab" data-step="6h" type="button">6h</button>
-                <button class="ge-tab" data-step="24h" type="button">24h</button>
+              <div class="ge-chart-ctrls">
+                <div class="ge-types" id="ge-types">
+                  <button class="ge-type active" data-type="line" type="button" title="Line">～</button>
+                  <button class="ge-type" data-type="candles" type="button" title="Candles">▮</button>
+                </div>
+                <div class="ge-tabs" id="ge-tabs" role="tablist">
+                  <button class="ge-tab" data-step="5m" type="button">5m</button>
+                  <button class="ge-tab active" data-step="1h" type="button">1h</button>
+                  <button class="ge-tab" data-step="6h" type="button">6h</button>
+                  <button class="ge-tab" data-step="24h" type="button">24h</button>
+                </div>
               </div>
             </div>
             <canvas id="ge-chart" class="ge-chart"></canvas>
@@ -181,8 +187,9 @@
         <!-- Right rail: screeners -->
         <aside class="ge-rail">
           <div class="ge-rail-tabs">
-            <button class="ge-rail-tab active" data-screen="mostTraded" type="button">Most Traded</button>
-            <button class="ge-rail-tab" data-screen="bestFlips" type="button">Best Flips</button>
+            <button class="ge-rail-tab active" data-screen="mostTraded" type="button">Traded</button>
+            <button class="ge-rail-tab" data-screen="bestFlips" type="button">Flips</button>
+            <button class="ge-rail-tab" data-screen="watch" type="button">★ Watch</button>
           </div>
           <div id="ge-screen" class="ge-screen">
             <div class="ge-screen-loading">loading market…</div>
@@ -190,6 +197,8 @@
           <div class="ge-rail-foot">data · prices.runescape.wiki</div>
         </aside>
       </div>
+
+      <div id="ge-toasts" class="ge-toasts" aria-live="polite"></div>
     </div>
   </div>
 

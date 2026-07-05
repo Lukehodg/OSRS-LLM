@@ -21,8 +21,21 @@
   let current = null;      // current item quote
   let series = [];         // current timeseries points
   let step = "1h";
+  let chartType = "line";  // line | candles
   let screener = null;     // { mostTraded, bestFlips }
   let clockTimer = null;
+
+  const toastsEl = document.getElementById("ge-toasts");
+  const typesEl = document.getElementById("ge-types");
+
+  // Persistent watchlist + alerts (this device).
+  const LS = {
+    get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  };
+  let watch = LS.get("wom.ge.watch", []);    // [{ id, name }]
+  let alerts = LS.get("wom.ge.alerts", []);  // [{ id, name, field, op, value, armed }]
+  const isWatched = (id) => watch.some((w) => w.id === id);
 
   // ---- formatting ----
   function fmt(n) {
@@ -41,6 +54,7 @@
     panel.hidden = false;
     if (!clockTimer) { tickClock(); clockTimer = setInterval(tickClock, 1000); }
     loadScreener();
+    startPoller();
     setTimeout(() => searchEl.focus(), 60);
     requestAnimationFrame(drawChart);
   }
@@ -117,8 +131,14 @@
     const spreadCls = q.marginAfterTax > 0 ? "up" : q.marginAfterTax < 0 ? "down" : "";
     const cell = (label, val, cls = "") => `<div class="ge-cell"><span class="ge-cell-l">${label}</span><span class="ge-cell-v ${cls}">${val}</span></div>`;
     quoteEl.innerHTML =
-      `<div class="ge-quote-head"><span class="ge-quote-name">${escapeHtml(q.name)}</span>` +
-      `<span class="ge-quote-tag">${q.members ? "Members" : "F2P"}${q.limit ? " · buy limit " + gp(q.limit) : ""}</span></div>` +
+      `<div class="ge-quote-head">` +
+        `<span class="ge-quote-name">${escapeHtml(q.name)}</span>` +
+        `<span class="ge-quote-tag">${q.members ? "Members" : "F2P"}${q.limit ? " · buy limit " + gp(q.limit) : ""}</span>` +
+        `<span class="ge-quote-acts">` +
+          `<button id="ge-pin" class="ge-icon-btn" type="button" title="Add to watchlist">${isWatched(q.id) ? "★" : "☆"}</button>` +
+          `<button id="ge-alert" class="ge-icon-btn" type="button" title="Set a price alert">🔔</button>` +
+        `</span>` +
+      `</div>` +
       `<div class="ge-grid">` +
       cell("Instant buy", gp(q.high) + " gp", "buy") +
       cell("Instant sell", gp(q.low) + " gp", "sell") +
@@ -129,7 +149,49 @@
       cell("Profit / limit", q.potentialProfit != null ? fmt(q.potentialProfit) + " gp" : "—", spreadCls) +
       cell("High alch", gp(q.highalch) + " gp") +
       `</div>` +
+      `<div id="ge-alert-form" class="ge-alert-form" hidden></div>` +
       (q.examine ? `<div class="ge-examine">“${escapeHtml(q.examine)}”</div>` : "");
+
+    document.getElementById("ge-pin").addEventListener("click", () => toggleWatch(q));
+    document.getElementById("ge-alert").addEventListener("click", () => toggleAlertForm(q));
+  }
+
+  function toggleWatch(q) {
+    if (isWatched(q.id)) watch = watch.filter((w) => w.id !== q.id);
+    else watch = [{ id: q.id, name: q.name }, ...watch].slice(0, 50);
+    LS.set("wom.ge.watch", watch);
+    const pin = document.getElementById("ge-pin");
+    if (pin) pin.textContent = isWatched(q.id) ? "★" : "☆";
+    if (screen === "watch") renderScreen();
+  }
+
+  // ---- alert form ----
+  function toggleAlertForm(q) {
+    const form = document.getElementById("ge-alert-form");
+    if (!form) return;
+    if (!form.hidden) { form.hidden = true; return; }
+    form.innerHTML =
+      `<select id="ge-al-field">` +
+        `<option value="buy">Instant-buy price</option>` +
+        `<option value="sell">Instant-sell price</option>` +
+        `<option value="margin">Margin (after tax)</option>` +
+      `</select>` +
+      `<select id="ge-al-op"><option value="lte">falls to ≤</option><option value="gte">rises to ≥</option></select>` +
+      `<input id="ge-al-val" type="number" placeholder="gp" />` +
+      `<button id="ge-al-set" type="button" class="ge-mini-btn">Set alert</button>`;
+    form.hidden = false;
+    document.getElementById("ge-al-set").addEventListener("click", () => {
+      const field = document.getElementById("ge-al-field").value;
+      const op = document.getElementById("ge-al-op").value;
+      const value = Number(document.getElementById("ge-al-val").value);
+      if (!Number.isFinite(value)) return;
+      alerts = [{ id: q.id, name: q.name, field, op, value, armed: true }, ...alerts].slice(0, 50);
+      LS.set("wom.ge.alerts", alerts);
+      form.hidden = true;
+      if (window.Notification && Notification.permission === "default") Notification.requestPermission();
+      toast(`Alert set — ${q.name} ${op === "lte" ? "≤" : "≥"} ${gp(value)}`);
+      startPoller();
+    });
   }
 
   // ---- timeseries + chart ----
@@ -155,6 +217,14 @@
     tabsEl.querySelectorAll(".ge-tab").forEach((t) => t.classList.toggle("active", t === b));
     step = b.dataset.step;
     loadSeries();
+  });
+
+  typesEl.addEventListener("click", (e) => {
+    const b = e.target.closest(".ge-type");
+    if (!b) return;
+    typesEl.querySelectorAll(".ge-type").forEach((t) => t.classList.toggle("active", t === b));
+    chartType = b.dataset.type;
+    drawChart();
   });
 
   function drawChart() {
@@ -207,24 +277,44 @@
     // trend colour: last vs first high
     const firstV = highs[0], lastV = highs[highs.length - 1];
     const up = lastV >= firstV;
-    const line = (key, color, width) => {
-      ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath();
-      let started = false;
-      series.forEach((p, i) => {
-        if (p[key] == null) return;
-        const px = x(i), py = y(p[key]);
-        if (!started) { ctx.moveTo(px, py); started = true; } else ctx.lineTo(px, py);
-      });
-      ctx.stroke();
-    };
-    line("avgLowPrice", "rgba(169,159,131,0.5)", 1.2);          // instant-sell (dim)
-    line("avgHighPrice", up ? "#6bbf6b" : "#e0655a", 1.8);       // instant-buy (trend colour)
-
-    // last price marker
     const li = series.length - 1;
-    if (lastV != null) {
-      ctx.fillStyle = up ? "#6bbf6b" : "#e0655a";
-      ctx.beginPath(); ctx.arc(x(li), y(lastV), 3, 0, Math.PI * 2); ctx.fill();
+
+    if (chartType === "candles") {
+      // Each interval as a range bar (avgLow→avgHigh), coloured by direction
+      // vs the previous interval's avgHigh. (The feed gives averages, not OHLC.)
+      const cw = Math.max(2, plotW / series.length - 2);
+      let prev = null;
+      series.forEach((p, i) => {
+        const hi = p.avgHighPrice, lo = p.avgLowPrice;
+        if (hi == null || lo == null) return;
+        const rising = prev == null ? true : hi >= prev;
+        prev = hi;
+        const color = rising ? "#6bbf6b" : "#e0655a";
+        const top = y(hi), bot = y(lo);
+        // wick
+        ctx.strokeStyle = color; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x(i), top); ctx.lineTo(x(i), bot); ctx.stroke();
+        // body
+        ctx.fillStyle = color;
+        ctx.fillRect(x(i) - cw / 2, top, cw, Math.max(1, bot - top));
+      });
+    } else {
+      const line = (key, color, width) => {
+        ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath();
+        let started = false;
+        series.forEach((p, i) => {
+          if (p[key] == null) return;
+          const px = x(i), py = y(p[key]);
+          if (!started) { ctx.moveTo(px, py); started = true; } else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+      };
+      line("avgLowPrice", "rgba(169,159,131,0.5)", 1.2);          // instant-sell (dim)
+      line("avgHighPrice", up ? "#6bbf6b" : "#e0655a", 1.8);       // instant-buy (trend colour)
+      if (lastV != null) {
+        ctx.fillStyle = up ? "#6bbf6b" : "#e0655a";
+        ctx.beginPath(); ctx.arc(x(li), y(lastV), 3, 0, Math.PI * 2); ctx.fill();
+      }
     }
 
     // time axis labels (first / mid / last)
@@ -264,6 +354,7 @@
   }
 
   function renderScreen() {
+    if (screen === "watch") return renderWatch();
     if (!screener) return;
     const rows = screener[screen] || [];
     screenEl.innerHTML = "";
@@ -282,6 +373,106 @@
       el.addEventListener("click", () => { searchEl.value = row.name; loadItem(row.id); });
       screenEl.appendChild(el);
     });
+  }
+
+  function renderWatch() {
+    screenEl.innerHTML = "";
+    if (!watch.length && !alerts.length) {
+      screenEl.innerHTML = `<div class="ge-screen-loading">Star ☆ an item to watch it, or set a 🔔 price alert.</div>`;
+      return;
+    }
+    for (const w of watch) {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = "ge-row";
+      el.innerHTML =
+        `<span class="ge-row-name">${escapeHtml(w.name)}</span>` +
+        `<span class="ge-row-metric" data-price>…</span>` +
+        `<span class="ge-row-x" title="Unwatch">✕</span>`;
+      el.addEventListener("click", (e) => {
+        if (e.target.classList.contains("ge-row-x")) {
+          watch = watch.filter((x) => x.id !== w.id); LS.set("wom.ge.watch", watch); renderWatch();
+        } else { searchEl.value = w.name; loadItem(w.id); }
+      });
+      screenEl.appendChild(el);
+      // fill live price lazily
+      fetch(`/api/ge/item?id=${w.id}`).then((r) => r.json()).then((q) => {
+        const m = el.querySelector("[data-price]");
+        if (m && q && q.high != null) {
+          m.textContent = fmt(q.high);
+          m.classList.toggle("up", q.marginAfterTax > 0);
+        }
+      }).catch(() => {});
+    }
+    if (alerts.length) {
+      const hd = document.createElement("div");
+      hd.className = "ge-watch-divider";
+      hd.textContent = "ALERTS";
+      screenEl.appendChild(hd);
+      alerts.forEach((a, i) => {
+        const el = document.createElement("div");
+        el.className = "ge-row ge-alert-row";
+        el.innerHTML =
+          `<span class="ge-row-name">${escapeHtml(a.name)}</span>` +
+          `<span class="ge-row-metric">${a.field === "buy" ? "buy" : a.field === "sell" ? "sell" : "margin"} ${a.op === "lte" ? "≤" : "≥"} ${fmt(a.value)}</span>` +
+          `<span class="ge-row-x" title="Remove alert">✕</span>`;
+        el.querySelector(".ge-row-x").addEventListener("click", () => {
+          alerts.splice(i, 1); LS.set("wom.ge.alerts", alerts); renderWatch();
+        });
+        screenEl.appendChild(el);
+      });
+    }
+  }
+
+  // ---- alerts poller ----
+  let pollTimer = null;
+  function startPoller() {
+    if (pollTimer || !alerts.length) return;
+    pollTimer = setInterval(checkAlerts, 60_000);
+    checkAlerts();
+  }
+  function alertMet(a, q) {
+    const actual = a.field === "buy" ? q.high : a.field === "sell" ? q.low : q.marginAfterTax;
+    if (actual == null) return false;
+    return a.op === "lte" ? actual <= a.value : actual >= a.value;
+  }
+  async function checkAlerts() {
+    if (!alerts.length) { clearInterval(pollTimer); pollTimer = null; return; }
+    const ids = [...new Set(alerts.map((a) => a.id))];
+    const quotes = {};
+    await Promise.all(ids.map((id) =>
+      fetch(`/api/ge/item?id=${id}`).then((r) => r.json()).then((q) => { quotes[id] = q; }).catch(() => {})));
+    let changed = false;
+    for (const a of alerts) {
+      const q = quotes[a.id];
+      if (!q) continue;
+      const met = alertMet(a, q);
+      if (met && a.armed) {
+        a.armed = false; changed = true;
+        fireAlert(a, q);
+      } else if (!met && !a.armed) {
+        a.armed = true; changed = true; // re-arm once condition clears
+      }
+    }
+    if (changed) LS.set("wom.ge.alerts", alerts);
+  }
+  function fireAlert(a, q) {
+    const actual = a.field === "buy" ? q.high : a.field === "sell" ? q.low : q.marginAfterTax;
+    const msg = `${a.name}: ${a.field} is ${gp(actual)} gp (${a.op === "lte" ? "≤" : "≥"} ${gp(a.value)})`;
+    toast("🔔 " + msg);
+    try {
+      if (window.Notification && Notification.permission === "granted") {
+        new Notification("RuneScribe — GE alert", { body: msg });
+      }
+    } catch {}
+  }
+
+  function toast(text) {
+    const t = document.createElement("div");
+    t.className = "ge-toast";
+    t.textContent = text;
+    toastsEl.appendChild(t);
+    setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 300); }, 7000);
   }
 
   // ---- AI analysis / forecast ----
@@ -327,6 +518,9 @@
   function escapeHtml(s) {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
+
+  // Keep persisted alerts live across reloads while the page is open.
+  if (alerts.length) startPoller();
 
   window.openGeTerminal = open;
 })();

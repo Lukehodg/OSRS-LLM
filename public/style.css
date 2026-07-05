@@ -1101,9 +1101,52 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
 
 /* Quote */
 .ge-empty-panel { color: var(--text-faint); font-size: 13px; padding: 20px; text-align: center; }
-.ge-quote-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.ge-quote-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
 .ge-quote-name { font-family: var(--font-caps); font-size: 17px; letter-spacing: 1px; color: var(--gold-bright); }
-.ge-quote-tag { font-size: 11px; color: var(--text-faint); }
+.ge-quote-tag { font-size: 11px; color: var(--text-faint); flex: 1; }
+.ge-quote-acts { display: flex; gap: 6px; }
+.ge-icon-btn {
+  background: rgba(255,255,255,0.02); border: 1px solid var(--gold-faint); border-radius: 6px;
+  color: var(--gold); font-size: 14px; line-height: 1; padding: 5px 9px; cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.ge-icon-btn:hover { background: rgba(217,192,122,0.12); border-color: var(--gold-dim); }
+
+.ge-alert-form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.ge-alert-form[hidden] { display: none; }
+.ge-alert-form select, .ge-alert-form input {
+  background: rgba(0,0,0,0.5); border: 1px solid var(--gold-faint); border-radius: 5px;
+  color: var(--gold-bright); font-family: var(--font-mono); font-size: 12px; padding: 6px 8px; outline: none;
+}
+.ge-alert-form input { width: 110px; }
+.ge-mini-btn {
+  font-family: var(--font-mono); font-size: 12px; color: #1c1403;
+  background: var(--gold); border: none; border-radius: 5px; padding: 6px 12px; cursor: pointer;
+}
+.ge-mini-btn:hover { filter: brightness(1.08); }
+
+.ge-row-x { color: var(--text-faint); font-size: 11px; padding: 0 2px; flex: 0 0 auto; }
+.ge-row-x:hover { color: #e0655a; }
+.ge-watch-divider {
+  font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; color: var(--text-faint);
+  padding: 10px 6px 4px; border-top: 1px solid var(--gold-faint); margin-top: 6px;
+}
+.ge-alert-row { cursor: default; }
+.ge-alert-row:hover { background: none; }
+
+.ge-toasts {
+  position: absolute; top: 58px; left: 50%; transform: translateX(-50%);
+  z-index: 10; display: flex; flex-direction: column; gap: 8px; align-items: center;
+  pointer-events: none; width: max-content; max-width: 90%;
+}
+.ge-toast {
+  font-family: var(--font-mono); font-size: 12.5px; color: #1c1403;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  border-radius: 8px; padding: 9px 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  animation: fadeUp 0.25s ease-out;
+}
+.ge-toast.out { opacity: 0; transition: opacity 0.3s ease; }
 .ge-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .ge-cell {
   display: flex; flex-direction: column; gap: 3px;
@@ -1124,6 +1167,15 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
 .ge-chart-wrap { position: relative; flex: 1; min-height: 220px; display: flex; flex-direction: column; }
 .ge-chart-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
 .ge-chart-title { font-size: 11px; letter-spacing: 1.5px; color: var(--gold-dim); }
+.ge-chart-ctrls { display: flex; align-items: center; gap: 8px; }
+.ge-types { display: flex; gap: 4px; }
+.ge-type {
+  font-family: var(--font-mono); font-size: 12px; line-height: 1; color: var(--text-dim);
+  background: rgba(255,255,255,0.02); border: 1px solid var(--gold-faint);
+  border-radius: 5px; padding: 3px 8px; cursor: pointer; transition: all 0.15s ease;
+}
+.ge-type:hover { color: var(--gold-bright); }
+.ge-type.active { color: #1c1403; background: var(--gold); border-color: transparent; }
 .ge-tabs { display: flex; gap: 4px; }
 .ge-tab {
   font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
