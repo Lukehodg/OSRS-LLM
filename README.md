@@ -1,6 +1,6 @@
 # 🧙 RuneScribe — an Old School RuneScape AI sage
 
-RuneScribe is a chat app where **the Wise Old Man of Draynor Village** answers anything about Old School RuneScape — quests, skilling, bossing, gear, money makers — powered by **Claude (Opus 4.8)** with live game-data tools:
+RuneScribe is a chat app where **the Wise Old Man of Draynor Village** answers anything about Old School RuneScape — quests, skilling, bossing, gear, money makers — powered by **Claude (Opus 4.8)**. It can also **watch your gameplay and coach your PvM** (see [PvM Coach](#-pvm-coach-vision) below). Live game-data tools:
 
 | Tool | Source | What it does |
 |---|---|---|
@@ -19,6 +19,18 @@ The sage doesn't just get a search snippet — it can **read the actual article*
 4. answers with the real numbers and a link back to the article for verification.
 
 This uses the OSRS Wiki's MediaWiki API (`list=search`, `parse&prop=sections`, `parse&prop=wikitext&section=N`). Wiki content is CC-BY-SA — the sage links every article it leans on, which keeps attribution intact.
+
+## 🎥 PvM Coach (vision)
+
+Click **PvM Coach** (top-left) and the sage can *watch your gameplay* and coach you:
+
+1. **Share your game window** — the browser's screen-share picker (`getDisplayMedia`) lets you pick your RuneLite/OSRS window. Nothing is recorded.
+2. **Play for a few seconds** — the page keeps a rolling buffer of the last 6 frames (one every ~2s, ~12s of play), downscaled to 900px to bound cost.
+3. **Analyse** — the frames are sent to Claude's vision as a timeline. It reads prayers, HP, gear, inventory, spec energy, positioning and boss phase, then returns a structured coaching readout: *what I see · what you're doing well · where to improve · next step*.
+
+The advice appears in the conversation panel, so you can ask follow-ups ("what prayer should I have had there?") in text afterward. Frames are only sent when you press **Analyse**; screen sharing requires a secure (HTTPS or localhost) connection.
+
+Cost is bounded per analysis: at most `MAX_FRAMES` (6) downscaled frames (~8k input tokens), plus the per-IP rate limit.
 
 The interface is a **living star chart**: the Wise Old Man floats in a golden particle nebula at the center of a dark void, surrounded by six hand-grown constellations — Quests, Combat, Skilling, Exchange, Hiscores, Lore. Click a constellation (or type into the command line beneath the stars) and the conversation slides in as a translucent panel. The nebula brightens while he thinks and burns ember-orange while he scries live data.
 
@@ -41,6 +53,7 @@ Then open **http://localhost:3000** and ask away.
 | `PORT` | `3000` | HTTP port |
 | `RATE_LIMIT_PER_10_MIN` | `15` | Max chat requests per IP per 10 minutes |
 | `MAX_INPUT_CHARS` | `24000` | Max total conversation size per request (bounds token spend) |
+| `MAX_FRAMES` | `6` | Max gameplay frames per PvM-coach analysis (bounds vision cost) |
 | `LOG_USAGE` | `0` | Set to `1` to log per-request token usage + cache hits |
 
 ## Deploying as a public website

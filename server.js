@@ -8,7 +8,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
 
 const app = express();
-app.use(express.json({ limit: "1mb" }));
+// Large enough for a burst of PvM-coach frames; per-endpoint caps
+// (MAX_INPUT_CHARS, MAX_FRAMES, MAX_FRAME_BYTES) do the real bounding.
+app.use(express.json({ limit: "8mb" }));
 
 // Serve index.html dynamically so social-preview tags carry an absolute URL
 // (Twitter/Facebook scrapers require it). Everything else is static.
@@ -338,6 +340,11 @@ const hits = new Map(); // ip -> [timestamps]
 const MAX_INPUT_CHARS = Number(process.env.MAX_INPUT_CHARS || 24000);
 const LOG_USAGE = process.env.LOG_USAGE === "1";
 
+// PvM coach: a burst of downscaled frames per analysis keeps vision cost bounded.
+const MAX_FRAMES = Number(process.env.MAX_FRAMES || 6);
+const MAX_FRAME_BYTES = 900_000; // per decoded frame, ~ generous for 900px JPEG
+const ALLOWED_FRAME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
 function rateLimited(ip) {
   const now = Date.now();
   const list = (hits.get(ip) || []).filter((t) => now - t < RATE_WINDOW_MS);
@@ -486,6 +493,115 @@ app.post("/api/chat", async (req, res) => {
         : err instanceof Anthropic.RateLimitError
           ? "The scrying pool is overworked (rate limited). Give it a moment and try again."
           : err.message || "Something went wrong.";
+    send({ type: "error", error: friendly });
+  }
+  res.end();
+});
+
+// ---------------------------------------------------------------------------
+// PvM coach — analyse a short burst of gameplay frames with vision.
+// ---------------------------------------------------------------------------
+
+const ANALYSE_SYSTEM_PROMPT = `You are the Wise Old Man of Draynor Village acting as an Old School RuneScape PvM coach. You are shown a short sequence of screenshots captured a couple of seconds apart from an adventurer's live gameplay — read them as a timeline of one fight or activity.
+
+Your job: work out what's happening and give specific, actionable coaching to help them improve.
+
+First, read the screen. From the RuneLite/OSRS interface look for: the boss or monster and its current phase/attack; the player's prayers (which are active — overhead protection, Piety/Rigour/Augury, Redemption); the health bars (player HP and boss HP); the gear worn and the inventory (food, potions, spec weapon, teleports); the special-attack energy and run energy; the minimap position and the player's positioning relative to the boss; any visible damage splats or projectiles telegraphing an incoming attack.
+
+Then coach. Structure your reply as:
+- **What I see** — one or two sentences identifying the boss/activity and the current situation.
+- **What you're doing well** — one or two genuine positives (don't invent them; if there's nothing clear, keep it brief).
+- **Where to improve** — the 2–4 highest-impact fixes, most important first. Be concrete and mechanical: prayer switches, gear swaps, inventory changes, positioning, when to spec, when to eat, tick-efficiency. Tie each to what you saw.
+- **Next step** — one thing to focus on this trip.
+
+Rules:
+- Only claim what the frames support. If you can't tell (e.g. prayer icons are off-screen or too small), say so and tell them what to show you next time rather than guessing.
+- If the images clearly aren't OSRS gameplay, say so kindly and ask them to share their game window.
+- Prices, exact drop rates and current metas can drift — if you're unsure of a number, say it's approximate rather than inventing precision.
+- Stay in character: the warm, slightly cheeky old sage — but the coaching itself is precise and honest. Keep it focused; this is a coach's readout, not a wiki page. Use markdown (bold for key terms, short bullet lists).`;
+
+function parseFrame(dataUrl) {
+  if (typeof dataUrl !== "string") return null;
+  const m = dataUrl.match(/^data:(image\/[a-z+]+);base64,([A-Za-z0-9+/=]+)$/);
+  if (!m) return null;
+  const media_type = m[1];
+  if (!ALLOWED_FRAME_TYPES.has(media_type)) return null;
+  const data = m[2];
+  // base64 length * 3/4 ≈ decoded byte size
+  if (data.length * 0.75 > MAX_FRAME_BYTES) return null;
+  return { type: "image", source: { type: "base64", media_type, data } };
+}
+
+app.post("/api/analyse", async (req, res) => {
+  if (rateLimited(req.ip)) {
+    return res.status(429).json({
+      error: "Easy there, adventurer — the old man needs a breather. Try again in a few minutes.",
+    });
+  }
+
+  const rawFrames = Array.isArray(req.body?.frames) ? req.body.frames : null;
+  if (!rawFrames || rawFrames.length === 0) {
+    return res.status(400).json({ error: "No gameplay frames were captured to analyse." });
+  }
+  if (rawFrames.length > MAX_FRAMES) {
+    return res.status(413).json({ error: `Too many frames (max ${MAX_FRAMES}).` });
+  }
+
+  const imageBlocks = [];
+  for (const f of rawFrames) {
+    const block = parseFrame(f);
+    if (!block) {
+      return res.status(400).json({ error: "One of the captured frames was invalid or too large." });
+    }
+    imageBlocks.push(block);
+  }
+
+  const note = typeof req.body?.note === "string" ? req.body.note.slice(0, 500) : "";
+  const instruction =
+    (note ? `The adventurer says: "${note}".\n\n` : "") +
+    `Here are ${imageBlocks.length} frames from my gameplay, in order (roughly a couple of seconds apart). Analyse them and coach me on where to improve.`;
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+  if (typeof res.flushHeaders === "function") res.flushHeaders();
+  const send = (event) => res.write(`data: ${JSON.stringify(event)}\n\n`);
+
+  try {
+    const stream = client.messages.stream({
+      model: MODEL,
+      max_tokens: 2000,
+      system: [{ type: "text", text: ANALYSE_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+      messages: [
+        { role: "user", content: [...imageBlocks, { type: "text", text: instruction }] },
+      ],
+    });
+    stream.on("text", (delta) => send({ type: "text", text: delta }));
+    const message = await stream.finalMessage();
+
+    if (LOG_USAGE && message.usage) {
+      const u = message.usage;
+      console.log(
+        `[analyse] frames=${imageBlocks.length} in=${u.input_tokens} out=${u.output_tokens} ` +
+          `cache_read=${u.cache_read_input_tokens ?? 0} stop=${message.stop_reason}`
+      );
+    }
+    if (message.stop_reason === "refusal") {
+      send({ type: "error", error: "The Wise Old Man declines to analyse that one, adventurer." });
+    } else {
+      send({ type: "done" });
+    }
+  } catch (err) {
+    const friendly =
+      err instanceof Anthropic.AuthenticationError ||
+      /authentication|api.?key/i.test(err.message || "")
+        ? "No valid ANTHROPIC_API_KEY is configured on the server — see the README."
+        : err instanceof Anthropic.RateLimitError
+          ? "The scrying pool is overworked (rate limited). Give it a moment and try again."
+          : err.message || "Something went wrong analysing your gameplay.";
     send({ type: "error", error: friendly });
   }
   res.end();

@@ -447,34 +447,21 @@ function setBusy(state) {
   }
 }
 
-async function sendMessage(text) {
-  if (busy || !text.trim()) return;
-  const userText = text.trim();
-
-  openDrawer();
-  addUserMessage(userText);
-  history.push({ role: "user", content: userText });
-  trimHistory();
-  setBusy(true);
+// Read an SSE response and render it into the conversation drawer.
+// Shared by text chat (/api/chat) and the PvM coach (/api/analyse).
+async function consumeStream(res) {
+  if (!res.ok || !res.body) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `The server answered with ${res.status}.`);
+  }
 
   let msg = null;
   let body = null;
   let assistantText = "";
   const pending = [];
-
   const finishMessage = () => { if (msg) msg.classList.remove("streaming"); };
 
   try {
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: history }),
-    });
-    if (!res.ok || !res.body) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `The server answered with ${res.status}.`);
-    }
-
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
@@ -522,15 +509,67 @@ async function sendMessage(text) {
         }
       }
     }
-  } catch (err) {
-    addErrorLine(err.message || "The link to the old man's study was lost.");
   } finally {
     finishMessage();
     if (assistantText.trim()) history.push({ role: "assistant", content: assistantText });
-    setBusy(false);
     scrollToBottom();
   }
 }
+
+async function sendMessage(text) {
+  if (busy || !text.trim()) return;
+  const userText = text.trim();
+
+  openDrawer();
+  addUserMessage(userText);
+  history.push({ role: "user", content: userText });
+  trimHistory();
+  setBusy(true);
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: history }),
+    });
+    await consumeStream(res);
+  } catch (err) {
+    addErrorLine(err.message || "The link to the old man's study was lost.");
+  } finally {
+    setBusy(false);
+  }
+}
+
+// Public hooks for the PvM coach (coach.js).
+window.WOM = {
+  get busy() { return busy; },
+  openDrawer,
+  setBusy,
+  setCore,
+  statusText,
+  // Send captured frames for analysis; render advice into the drawer and
+  // fold a short text note into the conversation so follow-ups have context.
+  async analyseFrames(frames, note) {
+    if (busy) return;
+    openDrawer();
+    addUserMessage(note);
+    history.push({ role: "user", content: note });
+    trimHistory();
+    setBusy(true);
+    try {
+      const res = await fetch("/api/analyse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ frames, note }),
+      });
+      await consumeStream(res);
+    } catch (err) {
+      addErrorLine(err.message || "The old man couldn't make out your screen, adventurer.");
+    } finally {
+      setBusy(false);
+    }
+  },
+};
 
 // ===========================================================================
 // Wiring

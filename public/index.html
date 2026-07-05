@@ -37,6 +37,46 @@
   <!-- Constellation labels are placed here by app.js -->
   <div id="labels" class="labels"></div>
 
+  <!-- PvM Coach launcher -->
+  <button id="coach-open" class="coach-launch" type="button" title="Let the old man watch your gameplay">
+    <span class="coach-launch-icon" aria-hidden="true">🎥</span>
+    <span>PvM&nbsp;Coach</span>
+  </button>
+
+  <!-- PvM Coach panel -->
+  <div id="coach" class="coach" hidden role="dialog" aria-modal="true" aria-label="PvM Coach">
+    <div class="coach-backdrop" data-coach-dismiss></div>
+    <div class="coach-card">
+      <button id="coach-close" class="coach-x" title="Close" aria-label="Close" data-coach-dismiss>✕</button>
+      <div class="coach-title">PVM&nbsp;COACH</div>
+      <p class="coach-desc">Let the old man watch you fight. Share your game window, play for a few
+      seconds, then ask for a readout — he'll tell you where to sharpen up.</p>
+
+      <div class="coach-stage">
+        <video id="coach-video" muted playsinline></video>
+        <div id="coach-idle" class="coach-idle">
+          <span class="coach-idle-icon" aria-hidden="true">🖥️</span>
+          Your shared game window will appear here.
+        </div>
+        <div id="coach-rec" class="coach-rec" hidden><span class="coach-rec-dot"></span>WATCHING</div>
+      </div>
+
+      <div class="coach-status" id="coach-status">Not watching yet.</div>
+
+      <input id="coach-note" class="coach-note" type="text" maxlength="120" spellcheck="false"
+             placeholder="What are you fighting? (optional — e.g. Zulrah, phase 3)" />
+
+      <div class="coach-actions">
+        <button id="coach-share" class="coach-btn" type="button">Share game window</button>
+        <button id="coach-analyse" class="coach-btn primary" type="button" disabled>Analyse my last few seconds</button>
+        <button id="coach-stop" class="coach-btn ghost" type="button" hidden>Stop watching</button>
+      </div>
+
+      <p class="coach-privacy">Frames are sent to the old man only when you press <em>Analyse</em>.
+      Nothing is recorded or stored — and screen sharing needs a secure (https) connection.</p>
+    </div>
+  </div>
+
   <!-- Command line, bottom-center -->
   <form id="chat-form" class="command" autocomplete="off">
     <span class="command-rune" aria-hidden="true">‹</span>
@@ -75,5 +115,6 @@
   </footer>
 
   <script src="app.js"></script>
+  <script src="coach.js"></script>
 </body>
 </html>
