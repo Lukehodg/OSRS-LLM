@@ -212,28 +212,38 @@
   </form>
 
   <!-- Conversation panel -->
-  <aside id="drawer" class="drawer" hidden aria-label="Conversation">
-    <header class="drawer-head">
-      <span class="drawer-title">CONVERSATION</span>
-      <button id="drawer-close" class="drawer-close" title="Close" aria-label="Close conversation">✕</button>
-    </header>
+  <div id="drawer" class="drawer" hidden role="dialog" aria-modal="true" aria-label="Conversation">
+    <div class="drawer-backdrop" data-drawer-dismiss></div>
+    <div class="drawer-card">
+      <header class="drawer-head">
+        <span class="drawer-title">CONVERSATION</span>
+        <button id="drawer-close" class="drawer-close" title="Close" aria-label="Close conversation" data-drawer-dismiss>✕</button>
+      </header>
 
-    <div id="chat-log" class="chat-log">
-      <div class="msg assistant">
-        <div class="msg-tag">Wise Old Man</div>
-        <div class="msg-body">
-          <p>Ah, an adventurer. The stars above chart my domains — quests, combat,
-          skilling, the Exchange, the hiscores, the old lore. Touch one, or simply
-          ask; I can scry live prices, players and wiki records while we speak.</p>
+      <div id="chat-log" class="chat-log">
+        <div class="msg assistant">
+          <div class="msg-tag">Wise Old Man</div>
+          <div class="msg-body">
+            <p>Ah, an adventurer. The stars above chart my domains — quests, combat,
+            skilling, the Exchange, the hiscores, the old lore. Touch one, or simply
+            ask; I can scry live prices, players and wiki records while we speak.</p>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div id="status-bar" class="status-bar" hidden>
-      <span class="status-flame" aria-hidden="true"></span>
-      <span id="status-text">the old man strokes his beard…</span>
+      <div id="status-bar" class="status-bar" hidden>
+        <span class="status-flame" aria-hidden="true"></span>
+        <span id="status-text">the old man strokes his beard…</span>
+      </div>
+
+      <form id="drawer-form" class="drawer-input" autocomplete="off">
+        <span class="command-rune" aria-hidden="true">‹</span>
+        <input id="drawer-field" type="text" placeholder="ask the wise old man…"
+               maxlength="2000" spellcheck="false" aria-label="Message" />
+        <button type="submit" class="drawer-send" aria-label="Send">›</button>
+      </form>
     </div>
-  </aside>
+  </div>
 
   <footer class="colophon" aria-hidden="true">
     live data · osrs hiscores · prices.runescape.wiki · osrs wiki — a fan project, not affiliated with jagex

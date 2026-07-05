@@ -176,18 +176,6 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
   transition: left 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* With the drawer open (desktop), keep the command line centered over
-   the remaining star chart instead of half-hidden underneath it. */
-@media (min-width: 701px) {
-  body:has(.drawer:not([hidden])) .command,
-  body:has(.drawer:not([hidden])) .colophon {
-    left: calc((100vw - 500px) / 2);
-  }
-  body:has(.drawer:not([hidden])) .command {
-    width: min(480px, calc(100vw - 540px));
-  }
-}
-
 .command-rune {
   font-family: var(--font-caps);
   font-size: 18px;
@@ -227,29 +215,41 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
 
 .drawer {
   position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 8;
-  width: min(500px, 100vw);
+  inset: 0;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 6, 5, 0.72);
+  backdrop-filter: blur(6px);
+  animation: fadeUp 0.2s ease-out;
+}
+
+.drawer-card {
+  position: relative;
+  width: min(680px, 100%);
+  height: min(76dvh, 720px);
   display: flex;
   flex-direction: column;
-  background: linear-gradient(270deg, rgba(16, 16, 14, 0.94), rgba(16, 16, 14, 0.86));
-  backdrop-filter: blur(16px);
-  border-left: 1px solid var(--gold-line);
-  box-shadow: -30px 0 80px rgba(0, 0, 0, 0.55);
-  animation: drawerIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-}
-@keyframes drawerIn {
-  from { transform: translateX(40px); opacity: 0; }
-  to   { transform: none; opacity: 1; }
+  background: linear-gradient(180deg, #14140f, #100f0c);
+  border: 1px solid var(--gold-line);
+  border-radius: 14px;
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  animation: coachIn 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .drawer-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 22px 14px;
+  padding: 16px 20px 13px;
   border-bottom: 1px solid var(--gold-faint);
 }
 
@@ -429,6 +429,46 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
   0%, 100% { transform: scale(1); opacity: 1; }
   50%      { transform: scale(1.5); opacity: 0.55; }
 }
+
+/* In-modal conversation input */
+.drawer-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px 16px;
+  border-top: 1px solid var(--gold-faint);
+}
+.drawer-input .command-rune { font-size: 16px; }
+#drawer-field {
+  flex: 1;
+  min-width: 0;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--gold-faint);
+  border-radius: 999px;
+  outline: none;
+  color: var(--gold-bright);
+  font-family: var(--font-body);
+  font-size: 17px;
+  padding: 10px 16px;
+  caret-color: var(--gold);
+  transition: border-color 0.2s ease;
+}
+#drawer-field::placeholder { color: var(--text-faint); font-style: italic; }
+#drawer-field:focus { border-color: var(--gold-dim); }
+#drawer-field:disabled { opacity: 0.5; }
+.drawer-send {
+  flex: 0 0 auto;
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  font-family: var(--font-caps); font-size: 20px; line-height: 1;
+  color: #1c1403;
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  border: none; border-radius: 50%; cursor: pointer;
+  transition: filter 0.12s ease, transform 0.1s ease, opacity 0.12s ease;
+}
+.drawer-send:hover:not(:disabled) { filter: brightness(1.08); }
+.drawer-send:active:not(:disabled) { transform: scale(0.95); }
+.drawer-send:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* --------------------------------------------------------------------------
    Colophon
@@ -1242,11 +1282,9 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
   .center-name { font-size: 12px; letter-spacing: 5px; }
   .constellation-label .label-name { letter-spacing: 3.5px; }
   .constellation-label .label-sub { display: none; }
-  .drawer { width: 100vw; border-left: none; }
+  .drawer { padding: 0; }
+  .drawer-card { width: 100%; height: 100dvh; border-radius: 0; border: none; }
   .drawer .chat-log { padding: 16px 18px 10px; }
-  /* the floating command line hovers over the drawer on phones —
-     leave room for it below the conversation */
-  .drawer { padding-bottom: 76px; }
   .command { bottom: 22px; }
   #chat-input { font-size: 17px; }
   .colophon { display: none; }

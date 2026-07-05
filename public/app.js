@@ -58,7 +58,8 @@ const canvas = document.getElementById("scene");
 const ctx = canvas.getContext("2d");
 const labelsRoot = document.getElementById("labels");
 const drawer = document.getElementById("drawer");
-const drawerClose = document.getElementById("drawer-close");
+const drawerForm = document.getElementById("drawer-form");
+const drawerField = document.getElementById("drawer-field");
 const chatLog = document.getElementById("chat-log");
 const form = document.getElementById("chat-form");
 const input = document.getElementById("chat-input");
@@ -396,7 +397,11 @@ function renderMarkdown(text) {
 
 function scrollToBottom() { chatLog.scrollTop = chatLog.scrollHeight; }
 
-function openDrawer() { drawer.hidden = false; }
+function openDrawer() {
+  const wasHidden = drawer.hidden;
+  drawer.hidden = false;
+  if (wasHidden && !busy) setTimeout(() => drawerField.focus(), 50);
+}
 function closeDrawer() { drawer.hidden = true; }
 
 function addMessage(role, tag) {
@@ -444,6 +449,7 @@ function setCore(state, label) {
 function setBusy(state) {
   busy = state;
   input.disabled = state;
+  drawerField.disabled = state;
   CLUSTERS.forEach((c) => c.el && (c.el.disabled = state));
   statusBar.hidden = !state;
   if (state) {
@@ -452,7 +458,8 @@ function setBusy(state) {
     setCore("busy", "pondering");
   } else {
     setCore("idle", "standing by");
-    input.focus();
+    // Focus the conversation input when the popup is open, else the chart's.
+    (!drawer.hidden ? drawerField : input).focus();
   }
 }
 
@@ -600,7 +607,17 @@ form.addEventListener("submit", (e) => {
   sendMessage(text);
 });
 
-drawerClose.addEventListener("click", closeDrawer);
+// Continue the conversation from inside the popup.
+drawerForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const text = drawerField.value;
+  drawerField.value = "";
+  sendMessage(text);
+});
+
+drawer.addEventListener("click", (e) => {
+  if (e.target.hasAttribute("data-drawer-dismiss")) closeDrawer();
+});
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !drawer.hidden) closeDrawer();
 });
