@@ -1,0 +1,22 @@
+# Render blueprint — https://render.com/docs/blueprint-spec
+# Deploy: push to GitHub, then "New +" → "Blueprint" and pick this repo.
+services:
+  - type: web
+    name: runescribe
+    runtime: node
+    plan: starter
+    buildCommand: npm ci
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false            # set this in the Render dashboard (secret)
+      - key: OSRS_LLM_MODEL
+        value: claude-opus-4-8
+      - key: RATE_LIMIT_PER_10_MIN
+        value: "15"
+      - key: MAX_INPUT_CHARS
+        value: "24000"
+      - key: NODE_VERSION
+        value: "22"

@@ -1,13 +1,26 @@
 import express from "express";
 import path from "node:path";
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PUBLIC_DIR = path.join(__dirname, "public");
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
-app.use(express.static(path.join(__dirname, "public")));
+
+// Serve index.html dynamically so social-preview tags carry an absolute URL
+// (Twitter/Facebook scrapers require it). Everything else is static.
+const INDEX_HTML = fs.readFileSync(path.join(PUBLIC_DIR, "index.html"), "utf8");
+function renderIndex(req) {
+  const proto = req.headers["x-forwarded-proto"] || req.protocol;
+  const origin = `${proto}://${req.get("host")}`;
+  return INDEX_HTML.replace(/%%ORIGIN%%/g, origin);
+}
+app.get("/", (req, res) => res.type("html").send(renderIndex(req)));
+
+app.use(express.static(PUBLIC_DIR, { index: false }));
 
 const client = new Anthropic();
 
@@ -321,6 +334,10 @@ const RATE_LIMIT = Number(process.env.RATE_LIMIT_PER_10_MIN || 15);
 const RATE_WINDOW_MS = 10 * 60 * 1000;
 const hits = new Map(); // ip -> [timestamps]
 
+// Cap the total conversation size sent to the model, bounding per-call spend.
+const MAX_INPUT_CHARS = Number(process.env.MAX_INPUT_CHARS || 24000);
+const LOG_USAGE = process.env.LOG_USAGE === "1";
+
 function rateLimited(ip) {
   const now = Date.now();
   const list = (hits.get(ip) || []).filter((t) => now - t < RATE_WINDOW_MS);
@@ -360,11 +377,38 @@ app.post("/api/chat", async (req, res) => {
     return res.status(400).json({ error: "messages array is required" });
   }
 
+  // Validate shape: only user/assistant turns with text or content blocks.
+  const shapeOk = history.every(
+    (m) =>
+      m &&
+      (m.role === "user" || m.role === "assistant") &&
+      (typeof m.content === "string" || Array.isArray(m.content))
+  );
+  if (!shapeOk) {
+    return res.status(400).json({ error: "malformed messages array" });
+  }
+
+  // Bound token spend per call: cap the total size of the conversation.
+  // Assistant turns can be content-block arrays (tool use); measure their JSON.
+  const totalChars = history.reduce((n, m) => {
+    return n + (typeof m.content === "string" ? m.content.length : JSON.stringify(m.content).length);
+  }, 0);
+  if (totalChars > MAX_INPUT_CHARS) {
+    return res.status(413).json({
+      error:
+        "This conversation has grown long, adventurer — start a fresh one and I'll have room to think.",
+    });
+  }
+
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
     Connection: "keep-alive",
+    // Disable proxy buffering so SSE tokens stream through hosted platforms
+    // (nginx/Render/etc.) instead of arriving all at once.
+    "X-Accel-Buffering": "no",
   });
+  if (typeof res.flushHeaders === "function") res.flushHeaders();
   const send = (event) => res.write(`data: ${JSON.stringify(event)}\n\n`);
 
   const messages = history.map((m) => ({ role: m.role, content: m.content }));
@@ -390,6 +434,15 @@ app.post("/api/chat", async (req, res) => {
       stream.on("text", (delta) => send({ type: "text", text: delta }));
 
       const message = await stream.finalMessage();
+
+      if (LOG_USAGE && message.usage) {
+        const u = message.usage;
+        console.log(
+          `[usage] in=${u.input_tokens} out=${u.output_tokens} ` +
+            `cache_read=${u.cache_read_input_tokens ?? 0} cache_write=${u.cache_creation_input_tokens ?? 0} ` +
+            `stop=${message.stop_reason}`
+        );
+      }
 
       if (message.stop_reason === "refusal") {
         send({ type: "error", error: "The Wise Old Man declines to answer that one, adventurer." });

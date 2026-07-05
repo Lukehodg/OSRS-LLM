@@ -322,6 +322,14 @@ function loop(t) {
 const history = [];
 let busy = false;
 
+// Keep the conversation bounded so token spend per request stays sane.
+// We trim from the front but never start on an assistant turn.
+const MAX_TURNS = 24;
+function trimHistory() {
+  while (history.length > MAX_TURNS) history.shift();
+  while (history.length && history[0].role !== "user") history.shift();
+}
+
 function escapeHtml(s) {
   return s
     .replace(/&/g, "&amp;")
@@ -446,6 +454,7 @@ async function sendMessage(text) {
   openDrawer();
   addUserMessage(userText);
   history.push({ role: "user", content: userText });
+  trimHistory();
   setBusy(true);
 
   let msg = null;

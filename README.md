@@ -40,6 +40,8 @@ Then open **http://localhost:3000** and ask away.
 | `OSRS_LLM_MODEL` | `claude-opus-4-8` | Any Claude model ID |
 | `PORT` | `3000` | HTTP port |
 | `RATE_LIMIT_PER_10_MIN` | `15` | Max chat requests per IP per 10 minutes |
+| `MAX_INPUT_CHARS` | `24000` | Max total conversation size per request (bounds token spend) |
+| `LOG_USAGE` | `0` | Set to `1` to log per-request token usage + cache hits |
 
 ## Deploying as a public website
 
@@ -50,7 +52,9 @@ RuneScribe is a single Node server that serves both the site and the API — dep
 - It respects `X-Forwarded-For` behind a proxy, so per-IP rate limiting works on hosted platforms.
 - **Set a spend limit + alert in the Anthropic Console before going public.**
 
-See **[ROLLOUT.md](ROLLOUT.md)** for a concrete 6-day plan from local to public launch.
+Ready-made deploy configs are included: `render.yaml` (Render blueprint), `Procfile` (Railway/Heroku), and a `Dockerfile` (Fly/VPS/any container host). Copy `.env.example` to `.env` for local runs.
+
+See **[ROLLOUT.md](ROLLOUT.md)** for a concrete 6-day plan from local to public launch, and **[RUNBOOK.md](RUNBOOK.md)** for deploy/rollback, key rotation, and spend-spike response.
 
 ## How it works
 

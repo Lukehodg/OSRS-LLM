@@ -12,30 +12,33 @@ The app is a website already; today makes it *safe* to be one.
 - [x] **Rate limiting** — per-IP sliding window (`RATE_LIMIT_PER_10_MIN`, default 15) so one visitor can't drain the API budget. *(done)*
 - [x] **`/healthz`** endpoint for uptime monitors and platform health checks. *(done)*
 - [x] **`trust proxy`** so client IPs are correct behind the host's load balancer. *(done)*
-- [ ] **Input caps** — reject requests whose combined history exceeds ~15k characters (return a friendly "let's start a fresh conversation" error) to bound token spend per call.
-- [ ] **Turn cap per conversation** — soft-limit history length client-side (keep last N turns) so long sessions don't grow unbounded.
-- [ ] **Cost guardrails** — set a monthly spend limit + email alert in the Anthropic Console. This is the real safety net.
+- [x] **Input caps** — reject requests whose combined history exceeds `MAX_INPUT_CHARS` (default 24k) with a friendly "start a fresh conversation" message; also validate message shape. *(done)*
+- [x] **Turn cap per conversation** — client keeps the last 24 turns so long sessions don't grow unbounded. *(done)*
+- [x] **Usage logging** — `LOG_USAGE=1` logs per-request input/output tokens and cache hits, for watching cost during beta. *(done)*
+- [ ] **Cost guardrails** — set a monthly spend limit + email alert in the Anthropic Console. *(needs your Console login — the one manual must-do.)*
 
-**End of day:** server is abuse-resistant. Load-test locally with a simple loop; confirm 429s appear and the app recovers.
+**End of day:** server is abuse-resistant. *(Verified: 413 on oversized payloads, 400 on malformed, 429 after the limit.)*
 
 ---
 
 ## Day 2 — Deploy to a real URL (staging)
-- [ ] Create the hosting project, point it at the `main` branch, set the start command to `npm start` and health check to `/healthz`.
-- [ ] Set env vars: `ANTHROPIC_API_KEY`, `OSRS_LLM_MODEL` (start on `claude-opus-4-8`), `RATE_LIMIT_PER_10_MIN`.
-- [ ] First deploy → get a `*.onrender.com` (or similar) URL. Smoke-test every path: a price check, a hiscores lookup, a **wiki search → read-page → section** flow, and an error case (misspelled player).
-- [ ] Confirm SSE streaming survives the host's proxy (some platforms buffer — verify tokens arrive incrementally, not all at once). If buffered, disable response buffering / enable HTTP/1.1 streaming per the platform's docs.
+- [x] **Deploy configs written** — `render.yaml`, `Procfile`, and `Dockerfile` + `.dockerignore` are in the repo, all pointing at `node server.js` with `/healthz`. *(done)*
+- [x] **SSE anti-buffering** — the chat response sends `X-Accel-Buffering: no` and flushes headers, so tokens stream through nginx/Render-style proxies. *(done)*
+- [ ] Create the hosting project (Render: New → Blueprint picks up `render.yaml`), point it at `main`.
+- [ ] Set the one secret env var `ANTHROPIC_API_KEY` in the dashboard (the rest have defaults in `render.yaml`).
+- [ ] First deploy → get a `*.onrender.com` URL. Smoke-test every path: a price check, a hiscores lookup, a **wiki search → read-page → section** flow, and an error case (misspelled player).
+- [ ] Verify tokens arrive incrementally on the live URL (the anti-buffering header is set, but confirm on the real host).
 
 **End of day:** a private URL you can share with a few friends.
 
 ---
 
 ## Day 3 — Polish + trust
-- [ ] **Landing clarity** — a one-line "what is this" and the "fan project, not affiliated with Jagex" line are visible before first interaction (protects against takedown risk; the OSRS Wiki content is CC-BY-SA — keep the article links so attribution is intrinsic).
-- [ ] **Empty/error states** — friendly copy when a player is unranked, an item doesn't exist, or the wiki is down. (Server already returns these; make sure the UI shows them clearly.)
-- [ ] **Mobile pass** — the star chart + drawer on a real phone. Tap targets, the floating command line, keyboard behavior.
-- [ ] **Social preview** — Open Graph tags + a preview image (a screenshot of the star chart) so shared links look good in Discord/Twitter.
-- [ ] **Analytics-lite** — a privacy-friendly counter (Plausible/Umami, or just log tool-call counts) to see what people ask. No PII.
+- [x] **Landing clarity** — the intro message and the "fan project · not affiliated with Jagex" colophon are visible before first interaction; the sage links every wiki article it uses (CC-BY-SA attribution is intrinsic). *(done)*
+- [x] **Empty/error states** — server returns friendly copy for unranked players, missing items, and wiki outages; the UI renders them as ember error lines. *(done)*
+- [x] **Social preview** — Open Graph + Twitter tags with an absolute-URL `og-image.png` (star-chart hero, 1200×630) injected at serve time so Discord/Twitter previews render. *(done)*
+- [ ] **Mobile pass on a real phone** — the star chart + drawer, tap targets, floating command line, keyboard behavior. *(Layout verified in-browser down to 420px; do a real-device pass.)*
+- [ ] **Analytics-lite** — a privacy-friendly counter (Plausible/Umami), or extend the existing `LOG_USAGE` logging to count tool calls. No PII.
 
 **End of day:** it looks and feels finished to a first-time visitor.
 
@@ -52,11 +55,11 @@ The app is a website already; today makes it *safe* to be one.
 ---
 
 ## Day 5 — Fix, tune, and cost-optimize
-- [ ] Burn down the top punch-list items (prompt tweaks, wiki section matching, formatting).
-- [ ] **Prompt caching is already on** for the system prompt — confirm cache hits in `usage` and widen the cached prefix (tool definitions) if not.
+- [x] **Runbook written** — deploy/rollback, API-key rotation, and spend-spike response in [RUNBOOK.md](RUNBOOK.md). *(done)*
+- [x] **Prompt caching** — `cache_control` sits on the system block, which renders after `tools`, so the whole static prefix (tools + persona) is cached together. Confirm hits with `LOG_USAGE=1` (`cache_read` > 0 on repeat requests). *(in place; verify live)*
+- [ ] Burn down the top punch-list items from beta (prompt tweaks, wiki section matching, formatting).
 - [ ] Tune the system prompt from real transcripts: tighten when the sage should scry vs. answer from memory (cuts unnecessary tool calls = cheaper + faster).
 - [ ] Re-test the full matrix after changes; redeploy to staging.
-- [ ] Write a tiny runbook: how to roll back a deploy, how to rotate the API key, what to do if spend spikes.
 
 **End of day:** faster, cheaper, and boring-to-operate.
 
