@@ -6,7 +6,19 @@ RuneScribe is a chat app where **the Wise Old Man of Draynor Village** answers a
 |---|---|---|
 | `get_player_stats` | Official OSRS hiscores | Live levels, XP, ranks, and boss KC for any player |
 | `get_ge_price` | [prices.runescape.wiki](https://prices.runescape.wiki) | Real-time Grand Exchange prices, buy limits, alch values |
-| `search_wiki` | [OSRS Wiki](https://oldschool.runescape.wiki) | Article summaries for drop rates, quest reqs, updates |
+| `search_wiki` | [OSRS Wiki](https://oldschool.runescape.wiki) | Full-text search returning top articles with snippets |
+| `read_wiki_page` | [OSRS Wiki](https://oldschool.runescape.wiki) | Opens an article — intro + section list, or one specific section (drop tables, quest requirements) |
+
+### Deep wiki integration
+
+The sage doesn't just get a search snippet — it can **read the actual article**. Given a question that needs precise facts (a drop rate, a quest's requirements, a recent update), it:
+
+1. `search_wiki` to find the right article,
+2. `read_wiki_page` (no section) to see the intro **and a map of every section**,
+3. `read_wiki_page` again targeting the exact section (e.g. `Drops`, `Requirements`) to read that content,
+4. answers with the real numbers and a link back to the article for verification.
+
+This uses the OSRS Wiki's MediaWiki API (`list=search`, `parse&prop=sections`, `parse&prop=wikitext&section=N`). Wiki content is CC-BY-SA — the sage links every article it leans on, which keeps attribution intact.
 
 The interface is a **living star chart**: the Wise Old Man floats in a golden particle nebula at the center of a dark void, surrounded by six hand-grown constellations — Quests, Combat, Skilling, Exchange, Hiscores, Lore. Click a constellation (or type into the command line beneath the stars) and the conversation slides in as a translucent panel. The nebula brightens while he thinks and burns ember-orange while he scries live data.
 
@@ -27,6 +39,18 @@ Then open **http://localhost:3000** and ask away.
 | `ANTHROPIC_API_KEY` | — (required) | Your Claude API key |
 | `OSRS_LLM_MODEL` | `claude-opus-4-8` | Any Claude model ID |
 | `PORT` | `3000` | HTTP port |
+| `RATE_LIMIT_PER_10_MIN` | `15` | Max chat requests per IP per 10 minutes |
+
+## Deploying as a public website
+
+RuneScribe is a single Node server that serves both the site and the API — deploy it to any Node host (Render, Railway, Fly, a VPS):
+
+- Start command: `npm start` · Health check: `/healthz`
+- Set `ANTHROPIC_API_KEY` (and optionally `OSRS_LLM_MODEL`, `RATE_LIMIT_PER_10_MIN`) as env vars.
+- It respects `X-Forwarded-For` behind a proxy, so per-IP rate limiting works on hosted platforms.
+- **Set a spend limit + alert in the Anthropic Console before going public.**
+
+See **[ROLLOUT.md](ROLLOUT.md)** for a concrete 6-day plan from local to public launch.
 
 ## How it works
 

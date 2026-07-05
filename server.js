@@ -21,12 +21,15 @@ const SYSTEM_PROMPT = `You are the Wise Old Man of Draynor Village — Old Schoo
 
 Your expertise covers all of Old School RuneScape: skilling methods and XP rates, quest guides and requirements, bossing and PvM strategies, gear progression, the Grand Exchange economy, slayer, ironman accounts, minigames, achievement diaries, clue scrolls, and game history/lore.
 
-You have three scrying tools:
+You have four scrying tools:
 - get_player_stats — look up a player's live hiscores (levels, XP, ranks, boss KC).
 - get_ge_price — look up an item's live Grand Exchange price.
-- search_wiki — search the official OSRS Wiki for anything you're unsure about (current meta, recent updates, exact drop rates, quest details).
+- search_wiki — search the official OSRS Wiki; returns the top matching articles with snippets.
+- read_wiki_page — open a wiki article (optionally a specific section) and read its actual content.
 
 Use the tools whenever the answer depends on live data (prices, a specific player's stats) or precise facts you might misremember (exact drop rates, requirements, recent game updates). Answer from your own knowledge for general strategy and advice. Never fabricate prices, stats, or drop rates — scry for them.
+
+Wiki workflow: search_wiki to find the right article, then read_wiki_page to read it before answering — the search snippet alone is rarely enough for numbers. For a specific fact buried in a long article (a drop table, quest requirements), read the article's section list first, then read just that section. When your answer leans on a wiki article, include a markdown link to it so the adventurer can verify.
 
 Style:
 - Stay in character: warm, a little cheeky, occasionally referencing your own legend (the party hat, the Draynor bank job), but always genuinely helpful. Sprinkle in OSRS flavour ("adventurer", "Gielinor", "may your drops be lucky") without overdoing it.
@@ -69,7 +72,7 @@ const TOOLS = [
   {
     name: "search_wiki",
     description:
-      "Search the official Old School RuneScape Wiki and return the top matching article's summary and URL. Call this for precise facts you might misremember: exact drop rates, quest requirements, recent game updates, or anything niche.",
+      "Search the official Old School RuneScape Wiki. Returns the top matching articles with title, URL and a short snippet. Use this to FIND the right article; follow up with read_wiki_page to actually read it before quoting facts.",
     input_schema: {
       type: "object",
       properties: {
@@ -79,6 +82,25 @@ const TOOLS = [
         },
       },
       required: ["query"],
+    },
+  },
+  {
+    name: "read_wiki_page",
+    description:
+      "Read an Old School RuneScape Wiki article. Without a section, returns the article intro/summary plus its full section list. With a section (name or index from that list), returns that section's actual content — use this for drop tables, quest requirement lists, strategy sections, etc.",
+    input_schema: {
+      type: "object",
+      properties: {
+        title: {
+          type: "string",
+          description: "The exact article title, e.g. 'Vorkath' or 'Dragon Slayer II' (use search_wiki to find it).",
+        },
+        section: {
+          type: "string",
+          description: "Optional: a section name (e.g. 'Drops', 'Requirements') or numeric section index from the article's section list.",
+        },
+      },
+      required: ["title"],
     },
   },
 ];
@@ -170,36 +192,116 @@ async function getGePrice({ item_name }) {
   };
 }
 
+const WIKI_API = "https://oldschool.runescape.wiki/api.php";
+
+const wikiUrl = (title) =>
+  `https://oldschool.runescape.wiki/w/${encodeURIComponent(title.replace(/ /g, "_"))}`;
+
+const stripHtml = (s) => (s || "").replace(/<[^>]*>/g, "").replace(/&\w+;/g, " ").trim();
+
+// Convert wikitext to something readable-enough for the model: keep link
+// labels, template contents and table cells, drop markup noise.
+function tidyWikitext(s) {
+  return (s || "")
+    .replace(/<ref[^>]*\/>/g, "")
+    .replace(/<ref[^>]*>[\s\S]*?<\/ref>/g, "")
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/\[\[(?:[^|\]]*\|)?([^\]]+)\]\]/g, "$1")
+    .replace(/'{2,}/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 async function searchWiki({ query }) {
-  const base = "https://oldschool.runescape.wiki/api.php";
-  let search;
+  let data;
   try {
-    search = await fetchJson(
-      `${base}?action=opensearch&format=json&limit=3&search=${encodeURIComponent(query)}`
+    data = await fetchJson(
+      `${WIKI_API}?action=query&format=json&list=search&srlimit=5&srsearch=${encodeURIComponent(query)}`
     );
   } catch (err) {
     return { error: `The wiki could not be reached (${err.message}).` };
   }
-  const [, titles, , urls] = search;
-  if (!titles || titles.length === 0) {
+  const results = data.query?.search || [];
+  if (results.length === 0) {
     return { error: `The wiki has no article matching "${query}".` };
   }
-  const title = titles[0];
+  return {
+    results: results.map((r) => ({
+      title: r.title,
+      url: wikiUrl(r.title),
+      snippet: stripHtml(r.snippet),
+    })),
+    hint: "Call read_wiki_page with a title to read an article before quoting numbers from it.",
+  };
+}
+
+async function readWikiPage({ title, section }) {
+  // Always fetch the section list — it doubles as a page-existence check
+  // and gives the model a map to drill into.
+  let parsed;
+  try {
+    parsed = await fetchJson(
+      `${WIKI_API}?action=parse&format=json&redirects=1&prop=sections&page=${encodeURIComponent(title)}`
+    );
+  } catch (err) {
+    return { error: `The wiki could not be reached (${err.message}).` };
+  }
+  if (parsed.error) {
+    return { error: `No wiki article titled "${title}" (${parsed.error.info || "not found"}). Use search_wiki to find the exact title.` };
+  }
+  const resolvedTitle = parsed.parse?.title || title;
+  const sections = (parsed.parse?.sections || []).map((s) => ({
+    index: s.index,
+    name: s.line,
+    level: s.toclevel,
+  }));
+
+  if (section != null && section !== "") {
+    const q = String(section).trim().toLowerCase();
+    const match =
+      sections.find((s) => s.index === String(section)) ||
+      sections.find((s) => s.name.toLowerCase() === q) ||
+      sections.find((s) => s.name.toLowerCase().includes(q));
+    if (!match) {
+      return {
+        error: `Article "${resolvedTitle}" has no section matching "${section}".`,
+        title: resolvedTitle,
+        sections,
+      };
+    }
+    let sec;
+    try {
+      sec = await fetchJson(
+        `${WIKI_API}?action=parse&format=json&redirects=1&prop=wikitext&section=${match.index}&page=${encodeURIComponent(resolvedTitle)}`
+      );
+    } catch (err) {
+      return { error: `Could not read that section (${err.message}).` };
+    }
+    const text = tidyWikitext(sec.parse?.wikitext?.["*"]);
+    return {
+      title: resolvedTitle,
+      url: wikiUrl(resolvedTitle),
+      section: match.name,
+      content: text.length > 14000 ? text.slice(0, 14000) + "\n…[truncated]" : text,
+    };
+  }
+
+  // No section requested: intro extract + the section map.
   let extract = null;
   try {
     const page = await fetchJson(
-      `${base}?action=query&format=json&prop=extracts&explaintext=1&exchars=2500&redirects=1&titles=${encodeURIComponent(title)}`
+      `${WIKI_API}?action=query&format=json&redirects=1&prop=extracts&explaintext=1&exchars=4000&titles=${encodeURIComponent(resolvedTitle)}`
     );
-    const pages = page.query?.pages || {};
-    extract = Object.values(pages)[0]?.extract || null;
+    extract = Object.values(page.query?.pages || {})[0]?.extract || null;
   } catch {
-    // Summary is best-effort; the title + URL alone are still useful.
+    // Best-effort; the section map alone is still useful.
   }
   return {
-    title,
-    url: urls?.[0] || `https://oldschool.runescape.wiki/w/${encodeURIComponent(title.replace(/ /g, "_"))}`,
-    summary: extract,
-    other_matches: titles.slice(1),
+    title: resolvedTitle,
+    url: wikiUrl(resolvedTitle),
+    intro: extract,
+    sections,
+    hint: "Call read_wiki_page again with a section name/index for details like drop tables or requirements.",
   };
 }
 
@@ -207,14 +309,52 @@ const TOOL_HANDLERS = {
   get_player_stats: getPlayerStats,
   get_ge_price: getGePrice,
   search_wiki: searchWiki,
+  read_wiki_page: readWikiPage,
 };
+
+// ---------------------------------------------------------------------------
+// Rate limiting — protects the API bill on a public deployment.
+// Sliding window per IP, in memory (fine for a single instance).
+// ---------------------------------------------------------------------------
+
+const RATE_LIMIT = Number(process.env.RATE_LIMIT_PER_10_MIN || 15);
+const RATE_WINDOW_MS = 10 * 60 * 1000;
+const hits = new Map(); // ip -> [timestamps]
+
+function rateLimited(ip) {
+  const now = Date.now();
+  const list = (hits.get(ip) || []).filter((t) => now - t < RATE_WINDOW_MS);
+  if (list.length >= RATE_LIMIT) {
+    hits.set(ip, list);
+    return true;
+  }
+  list.push(now);
+  hits.set(ip, list);
+  return false;
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, list] of hits) {
+    const fresh = list.filter((t) => now - t < RATE_WINDOW_MS);
+    if (fresh.length === 0) hits.delete(ip);
+    else hits.set(ip, fresh);
+  }
+}, RATE_WINDOW_MS).unref();
 
 // ---------------------------------------------------------------------------
 // Chat endpoint — streams SSE events to the browser while running the
 // tool-use loop against the Claude API.
 // ---------------------------------------------------------------------------
 
+app.set("trust proxy", 1); // respect X-Forwarded-For from the host's proxy
+
 app.post("/api/chat", async (req, res) => {
+  if (rateLimited(req.ip)) {
+    return res.status(429).json({
+      error: "Easy there, adventurer — the old man needs a breather. Try again in a few minutes.",
+    });
+  }
   const history = Array.isArray(req.body?.messages) ? req.body.messages : null;
   if (!history || history.length === 0) {
     return res.status(400).json({ error: "messages array is required" });
@@ -296,6 +436,11 @@ app.post("/api/chat", async (req, res) => {
     send({ type: "error", error: friendly });
   }
   res.end();
+});
+
+// Health check for uptime monitors and hosting platforms.
+app.get("/healthz", (_req, res) => {
+  res.json({ ok: true, model: MODEL, apiKey: Boolean(process.env.ANTHROPIC_API_KEY) });
 });
 
 app.listen(PORT, () => {
