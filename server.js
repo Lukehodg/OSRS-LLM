@@ -1,6 +1,7 @@
 import express from "express";
 import path from "node:path";
 import fs from "node:fs";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 
@@ -464,6 +465,23 @@ app.post("/api/chat", async (req, res) => {
 
   const messages = history.map((m) => ({ role: m.role, content: m.content }));
 
+  // Optional linked-account context (skills/quests/diaries/bank digest from
+  // the client). Appended AFTER the cached block so the cache prefix holds.
+  const playerContext =
+    typeof req.body?.context === "string" && req.body.context.trim()
+      ? req.body.context.slice(0, 6000)
+      : null;
+  const system = [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }];
+  if (playerContext) {
+    system.push({
+      type: "text",
+      text:
+        "The adventurer has linked their account. Live account context — tailor every answer to it " +
+        "(their levels, completed quests, gear on hand). Never recommend content they can't access " +
+        "or quests they've already finished:\n" + playerContext,
+    });
+  }
+
   try {
     // Agentic loop: stream a response; if Claude calls tools, run them,
     // append the results, and stream the follow-up — until end_turn.
@@ -472,7 +490,7 @@ app.post("/api/chat", async (req, res) => {
         model: MODEL,
         max_tokens: 16000,
         thinking: { type: "adaptive" },
-        system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+        system,
         tools: TOOLS,
         messages,
       });
@@ -914,6 +932,237 @@ app.post("/api/ge/analyse", async (req, res) => {
     send({ type: "error", error: friendly });
   }
   res.end();
+});
+
+// ---------------------------------------------------------------------------
+// Clans — registration, events (Boss/Skill of the Week, Bingo).
+// Persisted to a JSON file (fine for a single instance; use a real DB later).
+// ---------------------------------------------------------------------------
+
+const DATA_DIR = path.join(__dirname, "data");
+const CLANS_FILE = path.join(DATA_DIR, "clans.json");
+let clans = [];
+try {
+  clans = JSON.parse(fs.readFileSync(CLANS_FILE, "utf8"));
+  if (!Array.isArray(clans)) clans = [];
+} catch { clans = []; }
+
+let saveTimer = null;
+function saveClans() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(CLANS_FILE, JSON.stringify(clans, null, 2));
+    } catch (err) { console.error("clan save failed:", err.message); }
+  }, 250);
+}
+
+const publicClan = ({ token, ...c }) => c; // never leak edit tokens
+
+const clean = (s, max) => (typeof s === "string" ? s.trim().slice(0, max) : "");
+
+// Task pool for non-AI bingo boards.
+const BINGO_POOL = [
+  "Get a Barrows unique", "Hit a 40+ with any weapon", "Complete a Slayer task of 150+",
+  "Get a fire cape or kill Jad", "Obtain 100k from thieving", "Catch 50 anglerfish",
+  "Get any boss pet chance (50 KC at one boss)", "Complete 3 clue scrolls (any tier)",
+  "Get a Zulrah unique", "Smith 500 cannonballs", "Get a champion scroll... or 100 KC at GWD",
+  "Gain 250k XP in any skill", "Get a dragon defender", "Loot 20 brimstone chests",
+  "Complete a raid (CoX/ToB/ToA)", "Get a Vorkath head or 25 KC", "Mix 100 prayer potions",
+  "Obtain a slayer helm upgrade", "Win a game of LMS or 5 Wintertodt crates",
+  "Get 3 Barbarian Assault waves done", "Catch a big fish (any big bass/swordfish/shark)",
+  "Get a Wilderness boss kill", "Runecraft 500 blood runes", "Obtain any godsword shard",
+  "Get a Kraken or Cerberus unique", "Plant and harvest 5 herb runs", "Get a CG armour seed or 10 KC",
+  "Obtain a visage or draconic drop", "Complete 5 Mahogany Homes contracts", "Get a ToA purple or 3 completions",
+  "Gain a combat level", "Get any skilling pet chance (50k XP block)", "Kill 50 abyssal demons",
+  "Get an elite clue casket", "Obtain 500k GP of loot from any boss", "Do 10 farming contracts",
+];
+
+function makeBingoBoard(tasks) {
+  const pool = [...tasks];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const board = pool.slice(0, 24);
+  board.splice(12, 0, "FREE ✦");
+  return board;
+}
+
+// AI-generated themed bingo tasks; falls back to the built-in pool.
+async function generateBingoTasks(theme) {
+  try {
+    const msg = await client.messages.create({
+      model: MODEL,
+      max_tokens: 1200,
+      system:
+        "You create Old School RuneScape clan bingo tasks. Reply with EXACTLY 24 lines, one task per line, " +
+        "no numbering, no commentary. Tasks must be verifiable via screenshot, achievable within a week of " +
+        "casual play, varied across PvM/skilling/clues/minigames, and ironman-friendly (no 'buy X').",
+      messages: [{ role: "user", content: `Create 24 bingo tasks${theme ? ` with this theme/difficulty guidance: ${theme}` : ""}.` }],
+    });
+    const text = msg.content.find((b) => b.type === "text")?.text || "";
+    const lines = text.split("\n").map((l) => l.replace(/^[\s\-\d.)]+/, "").trim()).filter((l) => l.length > 4);
+    if (lines.length >= 20) return lines.slice(0, 24);
+  } catch { /* fall through to pool */ }
+  return null;
+}
+
+// Validate a Wise Old Man group id and snapshot its details.
+async function fetchWomGroup(id) {
+  const gid = Number(id);
+  if (!Number.isInteger(gid) || gid <= 0) return null;
+  try {
+    const g = await fetchJson(`https://api.wiseoldman.net/v2/groups/${gid}`);
+    if (!g || !g.name) return null;
+    return { id: gid, name: g.name, memberCount: g.memberCount ?? (g.memberships?.length ?? null) };
+  } catch { return null; }
+}
+
+// List clans (public view, newest first).
+app.get("/api/clans", (_req, res) => {
+  res.json({ clans: clans.map(publicClan).slice().reverse() });
+});
+
+// Register a clan.
+app.post("/api/clans", async (req, res) => {
+  if (hiscoresLimited(req.ip)) return res.status(429).json({ error: "Slow down a touch." });
+  const name = clean(req.body?.name, 40);
+  const description = clean(req.body?.description, 240);
+  const discord = clean(req.body?.discord, 120);
+  const womGroupId = req.body?.womGroupId;
+
+  if (name.length < 2) return res.status(400).json({ error: "Clan name must be at least 2 characters." });
+  if (clans.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
+    return res.status(409).json({ error: "A clan with that name is already registered." });
+  }
+  if (discord && !/^https:\/\/(www\.)?(discord\.gg|discord\.com\/invite)\/[\w-]+$/.test(discord)) {
+    return res.status(400).json({ error: "Discord link must be a discord.gg invite URL." });
+  }
+  let wom = null;
+  if (womGroupId) {
+    wom = await fetchWomGroup(womGroupId);
+    if (!wom) return res.status(400).json({ error: "That Wise Old Man group id couldn't be found." });
+  }
+  if (clans.length >= 500) return res.status(507).json({ error: "The clan registry is full." });
+
+  const clan = {
+    id: crypto.randomBytes(6).toString("hex"),
+    token: crypto.randomBytes(16).toString("hex"),
+    name, description,
+    discord: discord || null,
+    wom,
+    events: [],
+    createdAt: Date.now(),
+  };
+  clans.push(clan);
+  saveClans();
+  res.status(201).json({ clan: publicClan(clan), token: clan.token });
+});
+
+// Clan detail.
+app.get("/api/clans/:id", (req, res) => {
+  const clan = clans.find((c) => c.id === req.params.id);
+  if (!clan) return res.status(404).json({ error: "No such clan." });
+  res.json({ clan: publicClan(clan) });
+});
+
+function authClan(req, res) {
+  const clan = clans.find((c) => c.id === req.params.id);
+  if (!clan) { res.status(404).json({ error: "No such clan." }); return null; }
+  const token = req.get("x-clan-token") || "";
+  if (token !== clan.token) { res.status(403).json({ error: "Wrong clan key — only the clan's registrant can manage events." }); return null; }
+  return clan;
+}
+
+// Create an event (requires the clan key from registration).
+app.post("/api/clans/:id/events", async (req, res) => {
+  if (hiscoresLimited(req.ip)) return res.status(429).json({ error: "Slow down a touch." });
+  const clan = authClan(req, res);
+  if (!clan) return;
+
+  const type = ["botw", "sotw", "bingo"].includes(req.body?.type) ? req.body.type : null;
+  if (!type) return res.status(400).json({ error: "Event type must be botw, sotw or bingo." });
+  const target = clean(req.body?.target, 60);      // boss or skill name
+  const theme = clean(req.body?.theme, 160);       // bingo theme (optional)
+  const days = Math.min(Math.max(Number(req.body?.days) || 7, 1), 30);
+  if ((type === "botw" || type === "sotw") && target.length < 2) {
+    return res.status(400).json({ error: type === "botw" ? "Name the boss." : "Name the skill." });
+  }
+  if (clan.events.filter((e) => e.endsAt > Date.now()).length >= 5) {
+    return res.status(400).json({ error: "This clan already has 5 active events." });
+  }
+
+  let board = null;
+  let aiBoard = false;
+  if (type === "bingo") {
+    // AI board when a key is configured; built-in pool otherwise.
+    const aiTasks = process.env.ANTHROPIC_API_KEY ? await generateBingoTasks(theme) : null;
+    board = makeBingoBoard(aiTasks || BINGO_POOL);
+    aiBoard = Boolean(aiTasks);
+  }
+
+  const event = {
+    id: crypto.randomBytes(5).toString("hex"),
+    type, target: target || null, theme: theme || null,
+    board, aiBoard,
+    startsAt: Date.now(),
+    endsAt: Date.now() + days * 86_400_000,
+  };
+  clan.events.push(event);
+  saveClans();
+  res.status(201).json({ event });
+});
+
+// Remove an event.
+app.delete("/api/clans/:id/events/:eventId", (req, res) => {
+  const clan = authClan(req, res);
+  if (!clan) return;
+  const before = clan.events.length;
+  clan.events = clan.events.filter((e) => e.id !== req.params.eventId);
+  if (clan.events.length === before) return res.status(404).json({ error: "No such event." });
+  saveClans();
+  res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Linked accounts — RuneLite WikiSync proxy (quests, diaries, levels).
+// Players install the WikiSync plugin in RuneLite; it publishes their quest
+// and diary state to sync.runescape.wiki, which we read here.
+// ---------------------------------------------------------------------------
+
+app.get("/api/runelite/:player", async (req, res) => {
+  if (hiscoresLimited(req.ip)) return res.status(429).json({ error: "Slow down a touch." });
+  const player = clean(req.params.player, 12);
+  if (!player) return res.status(400).json({ error: "Invalid player name." });
+  try {
+    const data = await fetchJson(
+      `https://sync.runescape.wiki/runelite/player/${encodeURIComponent(player)}/STANDARD`
+    );
+    const quests = data.quests || {};
+    const questNames = Object.keys(quests);
+    const done = questNames.filter((q) => quests[q] === 2);
+    const inProgress = questNames.filter((q) => quests[q] === 1);
+    res.json({
+      player,
+      timestamp: data.timestamp || null,
+      levels: data.levels || null,
+      quests: {
+        total: questNames.length,
+        complete: done.length,
+        inProgress,
+        incomplete: questNames.filter((q) => quests[q] === 0),
+      },
+      diaries: data.achievement_diaries || null,
+    });
+  } catch (err) {
+    res.status(404).json({
+      error:
+        `No WikiSync data for "${player}". They need the WikiSync plugin enabled in RuneLite ` +
+        `and to have logged in since installing it (${err.message}).`,
+    });
+  }
 });
 
 // Health check for uptime monitors and hosting platforms.

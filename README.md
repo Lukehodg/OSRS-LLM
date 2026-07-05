@@ -60,6 +60,28 @@ Clicking the **Exchange** constellation opens a Bloomberg-style **Grand Exchange
 
 Market data comes from [prices.runescape.wiki](https://prices.runescape.wiki) (`/latest`, `/1h`, `/timeseries`, `/mapping`), cached briefly server-side; the data endpoints use the free hiscores rate-limit bucket, and only the two AI actions draw on the model budget.
 
+### 🏰 Clan Hall
+
+A **Clans** constellation sits at the top of the chart. Any player can:
+
+- **Register a clan** — name + description, optionally linked to a **Discord invite** and/or a **[Wise Old Man](https://wiseoldman.net) group** (the group id is validated live and its name/member-count shown). Registration returns a **clan key**, saved on that device — only the key-holder can manage the clan's events.
+- **Run events** — *Boss of the Week*, *Skill of the Week*, or **Bingo**: a 5×5 board (free centre) generated on the spot — **AI-conjured to your theme** when an API key is configured ("mid-level ironman friendly", "raids week"…), from a built-in task pool otherwise. Up to 5 active events per clan, 1–30 day durations.
+- **Browse** — every registered clan with its links and live events (bingo boards render in full, with countdowns).
+
+Clans persist server-side in `data/clans.json` (single-instance JSON store — swap for a real DB when it outgrows that; the file is gitignored). Edit tokens never appear in public responses.
+
+### 🔗 Link Account (RuneLite-powered personal advice)
+
+The **Link Account** launcher ties a real account to the chat:
+
+1. **Skills** from the live hiscores.
+2. **Quests & achievement diaries** via the **[WikiSync](https://runelite.net/plugin-hub/show/wikisync) RuneLite plugin** (the player installs it once; it publishes quest/diary state to `sync.runescape.wiki`, which the server reads).
+3. **Bank (optional)** — paste from RuneLite's *Bank Memory* plugin; stored only in the browser.
+
+Once linked, **every chat answer is tailored**: a compact digest (levels, quests done/in-progress, diaries, bank highlights) rides along with each request as an extra system block (after the cached prefix, so prompt caching still holds), and the sage is instructed never to recommend content you can't access or quests you've already finished. The launcher shows "`YourName` ✓" while linked; unlink any time.
+
+> Honest note: there's no official RuneLite "bank API" — WikiSync (quests/diaries) and Bank Memory (clipboard export) are the community-standard bridges, which is exactly what this uses.
+
 ### Constellation pickers
 
 Three constellations open an in-UI picker instead of firing a canned question: **Skilling** → all 23 skills (training guides), **Combat** → 18 iconic bosses (strategy, gear, requirements), **Quests** → 12 high-impact quests (requirements, walkthrough, rewards). Each tile uses its real OSRS Wiki icon (with emoji fallback); selecting one asks the sage about it. All three are driven by one config in `public/pickers.js` — adding another picker is just a new entry.

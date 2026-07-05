@@ -1292,6 +1292,162 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
 .ge-rail-foot { padding: 8px; text-align: center; font-size: 9px; letter-spacing: 1px; color: var(--text-faint); border-top: 1px solid var(--gold-faint); }
 
 /* --------------------------------------------------------------------------
+   Clan Hall + Link Account (shared modal look)
+   -------------------------------------------------------------------------- */
+.clans[hidden], .acct[hidden] { display: none; }
+.clans, .acct {
+  position: fixed; inset: 0; z-index: 24;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.clans-backdrop, .acct-backdrop {
+  position: absolute; inset: 0;
+  background: rgba(6, 6, 5, 0.74);
+  backdrop-filter: blur(6px);
+  animation: fadeUp 0.2s ease-out;
+}
+.clans-card, .acct-card {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  background: linear-gradient(180deg, #14140f, #100f0c);
+  border: 1px solid var(--gold-line);
+  border-radius: 14px;
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6);
+  padding: 26px 26px 22px;
+  animation: coachIn 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.acct-card { width: min(600px, 100%); }
+.clans-x, .acct-x {
+  position: absolute; top: 14px; right: 14px;
+  background: none; border: 1px solid transparent; color: var(--text-faint);
+  font-size: 14px; line-height: 1; padding: 6px 9px; border-radius: 50%; cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+.clans-x:hover, .acct-x:hover { color: var(--gold-bright); border-color: var(--gold-line); }
+.clans-title, .acct-title {
+  font-family: var(--font-caps); font-weight: 600; font-size: 15px;
+  letter-spacing: 5px; color: var(--gold);
+}
+.clans-sub, .acct-sub { margin: 6px 0 16px; font-size: 15px; color: var(--text-dim); line-height: 1.5; }
+.acct-sub a { color: var(--gold); }
+
+.clans-tabs { display: flex; border-bottom: 1px solid var(--gold-faint); margin-bottom: 14px; }
+.clans-tab {
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 1px;
+  color: var(--text-dim); background: none; border: none;
+  border-bottom: 2px solid transparent; padding: 9px 16px; cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.clans-tab.active { color: var(--gold-bright); border-bottom-color: var(--gold); }
+
+.clans-pane[hidden] { display: none; }
+.clans-loading, .clans-err { color: var(--text-faint); font-size: 14px; padding: 14px 4px; }
+.clans-err { color: #e8a49b; }
+.clans-note { font-size: 12.5px; color: var(--text-faint); line-height: 1.5; margin: 4px 0; }
+.clans-note b { color: var(--text-dim); }
+
+.clans-form { display: flex; flex-direction: column; gap: 10px; }
+.clans-form input, .event-form input, .event-form select, .acct-load input, .acct-bank textarea {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--gold-faint); border-radius: 8px; outline: none;
+  color: var(--gold-bright);
+  font-family: var(--font-body); font-size: 15.5px; padding: 10px 13px;
+  transition: border-color 0.2s ease;
+}
+.clans-form input:focus, .event-form input:focus, .acct-load input:focus, .acct-bank textarea:focus { border-color: var(--gold-line); }
+.clans-form input::placeholder, .acct-load input::placeholder, .acct-bank textarea::placeholder { color: var(--text-faint); font-style: italic; }
+
+.clans-btn {
+  font-family: var(--font-caps); font-size: 12px; font-weight: 500; letter-spacing: 2px;
+  color: var(--text);
+  background: rgba(217, 192, 122, 0.06); border: 1px solid var(--gold-line);
+  border-radius: 8px; padding: 11px 18px; cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, filter 0.15s ease, opacity 0.15s ease;
+}
+.clans-btn:hover:not(:disabled) { background: rgba(217, 192, 122, 0.12); border-color: var(--gold-dim); }
+.clans-btn.primary {
+  color: #1c1403; background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+  border-color: transparent; box-shadow: 0 6px 20px rgba(217, 192, 122, 0.2);
+}
+.clans-btn.primary:hover:not(:disabled) { filter: brightness(1.07); }
+.clans-btn.ghost { color: var(--text-dim); background: none; }
+
+.clans-status { font-family: var(--font-mono); font-size: 12px; min-height: 16px; color: var(--text-dim); }
+.clans-status.ok { color: #8fd48f; }
+.clans-status.err { color: #e8a49b; }
+
+/* Clan cards */
+.clan {
+  border: 1px solid var(--gold-faint); border-radius: 10px;
+  padding: 13px 14px; margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.015);
+}
+.clan-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.clan-name { font-family: var(--font-caps); font-size: 15px; letter-spacing: 1px; color: var(--gold-bright); flex: 1; }
+.clan-links { display: flex; gap: 12px; font-size: 12.5px; }
+.clan-links a { color: var(--gold); text-decoration-color: var(--gold-line); }
+.clan-desc { font-size: 14px; color: var(--text-dim); margin: 5px 0 8px; }
+
+/* Events */
+.event {
+  border: 1px dashed var(--gold-faint); border-radius: 8px;
+  padding: 9px 11px; margin-top: 8px;
+}
+.event.over { opacity: 0.5; }
+.event-head { display: flex; align-items: center; gap: 10px; }
+.event-type { flex: 1; font-size: 14px; color: var(--text); }
+.event-type b { color: var(--gold-bright); }
+.event-when { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.5px; color: #8fd48f; }
+.event.over .event-when { color: var(--text-faint); }
+.event-x {
+  background: none; border: none; color: var(--text-faint); cursor: pointer; font-size: 12px;
+}
+.event-x:hover { color: #e0655a; }
+
+/* Bingo board */
+.bingo {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 9px;
+}
+.bingo-cell {
+  font-size: 10px; line-height: 1.25; color: var(--text-dim);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--gold-faint); border-radius: 5px;
+  padding: 6px 5px; min-height: 52px;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  overflow: hidden;
+}
+.bingo-cell.free { color: #1c1403; background: var(--gold); border-color: transparent; font-weight: 600; }
+
+/* Manage forms */
+.event-form { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.event-form select { flex: 0 0 auto; }
+.event-form input { flex: 1; min-width: 140px; }
+.event-form input[hidden] { display: none; }
+
+/* Link Account */
+.acct-load { display: flex; gap: 10px; margin-bottom: 8px; }
+.acct-load input { flex: 1; min-width: 0; }
+.acct-summary {
+  border: 1px solid var(--gold-faint); border-radius: 10px;
+  padding: 12px 14px; margin: 12px 0; font-size: 14.5px;
+}
+.acct-summary[hidden] { display: none; }
+.acct-line { margin: 4px 0; color: var(--text); }
+.acct-line.dim { color: var(--text-faint); }
+.acct-line b { color: var(--gold-bright); }
+.acct-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.acct-chip {
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+  border: 1px solid var(--gold-faint); border-radius: 999px; padding: 3px 9px;
+}
+.acct-chip b { color: var(--star); }
+.acct-bank { margin: 10px 0; font-size: 14px; color: var(--text-dim); }
+.acct-bank summary { cursor: pointer; color: var(--gold); }
+.acct-bank textarea { width: 100%; margin: 8px 0; resize: vertical; font-family: var(--font-mono); font-size: 12.5px; }
+.acct-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
+
+/* --------------------------------------------------------------------------
    Small screens
    -------------------------------------------------------------------------- */
 @media (max-width: 700px) {

@@ -47,6 +47,10 @@
       <span class="launch-icon" aria-hidden="true">⚔️</span>
       <span>Ironman&nbsp;Path</span>
     </button>
+    <button id="acct-open" class="launch" type="button" title="Link your account — skills, quests and bank inform every answer">
+      <span class="launch-icon" aria-hidden="true">🔗</span>
+      <span id="acct-launch-label">Link&nbsp;Account</span>
+    </button>
   </div>
 
   <!-- PvM Coach panel -->
@@ -202,6 +206,69 @@
     </div>
   </div>
 
+  <!-- Clans -->
+  <div id="clans" class="clans" hidden role="dialog" aria-modal="true" aria-label="Clans">
+    <div class="clans-backdrop" data-clans-dismiss></div>
+    <div class="clans-card">
+      <button class="clans-x" title="Close" aria-label="Close" data-clans-dismiss>✕</button>
+      <div class="clans-title">CLAN&nbsp;HALL</div>
+      <p class="clans-sub">Register your clan, link your Discord or Wise Old Man group, and run events.</p>
+
+      <div class="clans-tabs">
+        <button class="clans-tab active" data-tab="browse" type="button">Browse</button>
+        <button class="clans-tab" data-tab="register" type="button">Register</button>
+        <button class="clans-tab" data-tab="manage" type="button">My events</button>
+      </div>
+
+      <div id="clans-browse" class="clans-pane"></div>
+
+      <form id="clans-register" class="clans-pane clans-form" hidden autocomplete="off">
+        <input id="clan-name" type="text" maxlength="40" placeholder="Clan name" spellcheck="false" />
+        <input id="clan-desc" type="text" maxlength="240" placeholder="One-line description (optional)" />
+        <input id="clan-discord" type="url" maxlength="120" placeholder="Discord invite — https://discord.gg/… (optional)" spellcheck="false" />
+        <input id="clan-wom" type="number" min="1" placeholder="Wise Old Man group id (optional)" />
+        <p class="clans-note">Find your group id in its wiseoldman.net URL: wiseoldman.net/groups/<b>1234</b>.
+        Registering gives you a <b>clan key</b> (saved on this device) — you'll need it to manage events.</p>
+        <button class="clans-btn primary" type="submit">Register clan</button>
+        <div id="clan-reg-status" class="clans-status"></div>
+      </form>
+
+      <div id="clans-manage" class="clans-pane" hidden></div>
+    </div>
+  </div>
+
+  <!-- Link Account -->
+  <div id="acct" class="acct" hidden role="dialog" aria-modal="true" aria-label="Link your account">
+    <div class="acct-backdrop" data-acct-dismiss></div>
+    <div class="acct-card">
+      <button class="acct-x" title="Close" aria-label="Close" data-acct-dismiss>✕</button>
+      <div class="acct-title">LINK&nbsp;YOUR&nbsp;ACCOUNT</div>
+      <p class="acct-sub">The sage reads your <b>skills</b> (hiscores) and <b>quests &amp; diaries</b>
+      (RuneLite <a href="https://runelite.net/plugin-hub/show/wikisync" target="_blank" rel="noopener">WikiSync plugin</a>)
+      — then tailors every answer to your account.</p>
+
+      <form id="acct-form" class="acct-load" autocomplete="off">
+        <input id="acct-rsn" type="text" maxlength="12" placeholder="Your RuneScape name" spellcheck="false" />
+        <button class="clans-btn primary" type="submit">Link</button>
+      </form>
+      <div id="acct-status" class="clans-status"></div>
+
+      <div id="acct-summary" class="acct-summary" hidden></div>
+
+      <details class="acct-bank">
+        <summary>Optional: add your bank (via RuneLite “Bank Memory” plugin)</summary>
+        <p class="clans-note">Install <b>Bank Memory</b> from the RuneLite plugin hub, open your bank,
+        then use its “copy to clipboard” option and paste below. Stored only on this device.</p>
+        <textarea id="acct-bank" rows="4" maxlength="4000" placeholder="paste your bank list here…"></textarea>
+        <button id="acct-bank-save" class="clans-btn" type="button">Save bank</button>
+      </details>
+
+      <div class="acct-actions">
+        <button id="acct-unlink" class="clans-btn ghost" type="button" hidden>Unlink account</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Command line, bottom-center -->
   <form id="chat-form" class="command" autocomplete="off">
     <span class="command-rune" aria-hidden="true">‹</span>
@@ -254,5 +321,7 @@
   <script src="ironman.js"></script>
   <script src="pickers.js"></script>
   <script src="ge.js"></script>
+  <script src="clans.js"></script>
+  <script src="account.js"></script>
 </body>
 </html>

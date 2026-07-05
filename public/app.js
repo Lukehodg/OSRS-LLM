@@ -8,6 +8,11 @@
 // The sage's domains. Angles in degrees: -90 is straight up.
 const CLUSTERS = [
   {
+    name: "CLANS", sub: "events · bingo · botw", angle: -90,
+    opens: "clans",
+    prompt: "How do clans work in Old School RuneScape, and what makes a good clan event?",
+  },
+  {
     name: "QUESTS", sub: "pick a quest · guides", angle: -135,
     picker: "quests",
     prompt: "Which quests should every new member rush first, and why?",
@@ -211,6 +216,7 @@ function buildLabels() {
       // Some clusters open a richer UI instead of firing a fixed prompt.
       if (c.picker && window.openPicker) window.openPicker(c.picker);
       else if (c.opens === "ge" && window.openGeTerminal) window.openGeTerminal();
+      else if (c.opens === "clans" && window.openClans) window.openClans();
       else sendMessage(c.prompt);
     });
     labelsRoot.appendChild(btn);
@@ -546,7 +552,7 @@ async function sendMessage(text) {
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: history }),
+      body: JSON.stringify({ messages: history, context: window.WOM.accountContext() }),
     });
     await consumeStream(res);
   } catch (err) {
@@ -568,11 +574,46 @@ window.WOM = {
   // from localStorage on boot. Pickers use it to personalise tiles/prompts.
   account: null,
   setAccount(acc) {
-    this.account = acc && acc.skills ? acc : null;
+    // Merge so hiscores (skills), WikiSync (quests/diaries) and a bank paste
+    // can each contribute without clobbering the others.
+    const prev = this.account && acc && this.account.player === acc.player ? this.account : {};
+    this.account = acc ? { ...prev, ...acc } : null;
     try {
       if (this.account) localStorage.setItem("wom.account", JSON.stringify(this.account));
       else localStorage.removeItem("wom.account");
     } catch {}
+  },
+  // Compact digest of the linked account, sent with every chat request so
+  // the sage tailors advice to the actual player.
+  accountContext() {
+    const a = this.account;
+    if (!a) return undefined;
+    const parts = [`Player: ${a.player}.`];
+    if (a.skills) {
+      const levels = Object.entries(a.skills)
+        .filter(([k]) => k !== "Overall")
+        .map(([k, v]) => `${k} ${v.level}`)
+        .join(", ");
+      parts.push(`Levels: ${levels}.`);
+    }
+    if (a.quests) {
+      parts.push(`Quests: ${a.quests.complete}/${a.quests.total} complete.`);
+      if (a.quests.inProgress?.length)
+        parts.push(`In progress: ${a.quests.inProgress.slice(0, 15).join("; ")}.`);
+      if (a.quests.incomplete?.length)
+        parts.push(`Not started (sample): ${a.quests.incomplete.slice(0, 40).join("; ")}.`);
+    }
+    if (a.diaries) {
+      const done = [];
+      for (const [region, tiers] of Object.entries(a.diaries)) {
+        for (const [tier, v] of Object.entries(tiers || {})) {
+          if (v && (v.complete === true || v === true)) done.push(`${region} ${tier}`);
+        }
+      }
+      if (done.length) parts.push(`Diaries complete: ${done.join(", ")}.`);
+    }
+    if (a.bank) parts.push(`Bank highlights (player-provided): ${a.bank.slice(0, 1600)}`);
+    return parts.join("\n").slice(0, 6000);
   },
   // POST `body` to `url`, render the streamed reply into the drawer, and fold
   // a short text note into the conversation so text follow-ups have context.
