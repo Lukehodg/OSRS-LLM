@@ -125,6 +125,17 @@
     </div>
   </div>
 
+  <!-- Skills picker -->
+  <div id="skills" class="skills" hidden role="dialog" aria-modal="true" aria-label="Choose a skill">
+    <div class="skills-backdrop" data-skills-dismiss></div>
+    <div class="skills-card">
+      <button id="skills-close" class="skills-x" title="Close" aria-label="Close" data-skills-dismiss>✕</button>
+      <div class="skills-title">CHOOSE&nbsp;A&nbsp;SKILL</div>
+      <p class="skills-sub">Pick a skill and the old man will chart the best way to train it.</p>
+      <div id="skills-grid" class="skills-grid"></div>
+    </div>
+  </div>
+
   <!-- Command line, bottom-center -->
   <form id="chat-form" class="command" autocomplete="off">
     <span class="command-rune" aria-hidden="true">‹</span>
@@ -165,5 +176,6 @@
   <script src="app.js"></script>
   <script src="coach.js"></script>
   <script src="ironman.js"></script>
+  <script src="skills.js"></script>
 </body>
 </html>

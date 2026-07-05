@@ -914,6 +914,95 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
 .iron-focus:focus { border-color: var(--gold-line); }
 
 /* --------------------------------------------------------------------------
+   Skills picker
+   -------------------------------------------------------------------------- */
+.skills[hidden] { display: none; }
+.skills {
+  position: fixed;
+  inset: 0;
+  z-index: 22;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.skills-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 6, 5, 0.74);
+  backdrop-filter: blur(6px);
+  animation: fadeUp 0.2s ease-out;
+}
+.skills-card {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  background: linear-gradient(180deg, #14140f, #100f0c);
+  border: 1px solid var(--gold-line);
+  border-radius: 14px;
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6);
+  padding: 26px 26px 24px;
+  animation: coachIn 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.skills-x {
+  position: absolute;
+  top: 14px; right: 14px;
+  background: none; border: 1px solid transparent;
+  color: var(--text-faint); font-size: 14px; line-height: 1;
+  padding: 6px 9px; border-radius: 50%; cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+.skills-x:hover { color: var(--gold-bright); border-color: var(--gold-line); }
+.skills-title {
+  font-family: var(--font-caps);
+  font-weight: 600; font-size: 15px; letter-spacing: 5px;
+  color: var(--gold);
+}
+.skills-sub { margin: 6px 0 18px; font-size: 15px; color: var(--text-dim); }
+
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.skill-tile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--gold-faint);
+  border-radius: 9px;
+  padding: 9px 11px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.skill-tile:hover {
+  background: rgba(217, 192, 122, 0.10);
+  border-color: var(--gold-dim);
+  transform: translateY(-1px);
+}
+.skill-icon {
+  flex: 0 0 auto;
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.skill-img {
+  max-width: 22px; max-height: 22px;
+  width: auto; height: auto;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+.skill-label {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--text);
+}
+
+/* --------------------------------------------------------------------------
    Small screens
    -------------------------------------------------------------------------- */
 @media (max-width: 700px) {
@@ -935,6 +1024,8 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
   .coach-btn.primary { min-width: 140px; }
   .iron-card { padding: 22px 16px 18px; }
   .iron-board { grid-auto-flow: row; grid-auto-columns: unset; grid-template-columns: 1fr; }
+  .skills-card { padding: 22px 16px 18px; }
+  .skills-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (prefers-reduced-motion: reduce) {

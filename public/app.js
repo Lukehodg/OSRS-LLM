@@ -16,7 +16,8 @@ const CLUSTERS = [
     prompt: "I'm a mid-level account (base 70s). Give me a gear and quest roadmap to kill Vorkath.",
   },
   {
-    name: "SKILLING", sub: "methods · xp rates", angle: 180,
+    name: "SKILLING", sub: "pick a skill · xp rates", angle: 180,
+    picker: "skills",
     prompt: "What are the most efficient training methods right now for Agility, Runecraft and Slayer?",
   },
   {
@@ -202,7 +203,11 @@ function buildLabels() {
     btn.innerHTML =
       `<span class="label-name">${c.name}</span>` +
       `<span class="label-sub">${c.sub}</span>`;
-    btn.addEventListener("click", () => sendMessage(c.prompt));
+    btn.addEventListener("click", () => {
+      // Some clusters open a picker in the UI instead of firing a fixed prompt.
+      if (c.picker === "skills" && window.openSkillsPicker) window.openSkillsPicker();
+      else sendMessage(c.prompt);
+    });
     labelsRoot.appendChild(btn);
     c.el = btn;
   }
@@ -546,6 +551,8 @@ window.WOM = {
   openDrawer,
   setBusy,
   setCore,
+  // Send a plain chat message (used by the skills picker).
+  ask(text) { return sendMessage(text); },
   // POST `body` to `url`, render the streamed reply into the drawer, and fold
   // a short text note into the conversation so text follow-ups have context.
   async stream(url, body, note, errorFallback) {
