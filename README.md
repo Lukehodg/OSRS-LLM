@@ -45,6 +45,19 @@ A live, personalised answer to static gear-progression charts (like Ladlor's): i
    - **locked** — showing the exact gap (e.g. *Abyssal whip · Slayer 78/85*).
 3. **Get my personalised plan** → your stats and milestone status are sent to the Wise Old Man, who returns a prioritised, ironman-aware plan grounded in your actual account (*where you are · do these next · on the horizon · grind for today*) — no "buy it off the GE" advice, because irons can't.
 
+### 📟 GE Terminal (market analysis + AI forecast)
+
+Clicking the **Exchange** constellation opens a Bloomberg-style **Grand Exchange terminal**:
+
+- **Ticker search** over every tradeable item.
+- **Live quote panel** — instant-buy/sell, **margin after the 2% GE sales tax** (capped 5m, none under 100gp), ROI, profit-per-buy-limit, 1h volume, high alch.
+- **Interactive price + volume chart** with 5m / 1h / 6h / 24h timeframes (drawn on canvas from the wiki timeseries; instant-buy line coloured green/red by trend, volume bars beneath).
+- **Screeners** — *Most Traded* (by 1h volume) and *Best Flips* (ranked by after-tax profit per buy-limit, filtered for liquidity), each clickable to load the item.
+- **◆ Analyse market** — the sage gives a trading-desk read (flip viability, liquidity, trend, risks).
+- **◆ AI price forecast** — feeds the recent price/volume series to Claude for a structured near-term prediction (**Outlook ▲/▼/► + confidence**, likely range, drivers, and what would flip the call). It's framed honestly: a game economy driven by players and Jagex updates can't be truly predicted, so it's an informed read, never a guarantee.
+
+Market data comes from [prices.runescape.wiki](https://prices.runescape.wiki) (`/latest`, `/1h`, `/timeseries`, `/mapping`), cached briefly server-side; the data endpoints use the free hiscores rate-limit bucket, and only the two AI actions draw on the model budget.
+
 ### Constellation pickers
 
 Three constellations open an in-UI picker instead of firing a canned question: **Skilling** → all 23 skills (training guides), **Combat** → 18 iconic bosses (strategy, gear, requirements), **Quests** → 12 high-impact quests (requirements, walkthrough, rewards). Each tile uses its real OSRS Wiki icon (with emoji fallback); selecting one asks the sage about it. All three are driven by one config in `public/pickers.js` — adding another picker is just a new entry.

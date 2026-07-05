@@ -207,6 +207,43 @@ async function getGePrice({ item_name }) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// GE Terminal helpers — live prices, volumes, and a short in-memory cache.
+// ---------------------------------------------------------------------------
+
+const PRICES_API = "https://prices.runescape.wiki/api/v1/osrs";
+
+const _cache = new Map(); // key -> { at, ttl, value }
+async function cached(key, ttlMs, loader) {
+  const hit = _cache.get(key);
+  if (hit && Date.now() - hit.at < hit.ttl) return hit.value;
+  const value = await loader();
+  _cache.set(key, { at: Date.now(), ttl: ttlMs, value });
+  return value;
+}
+
+// Bulk 1-hour averages + volumes for every item (cached ~60s).
+const get1h = () => cached("1h", 60_000, () => fetchJson(`${PRICES_API}/1h`));
+// Bulk latest instant-buy/sell for every item (cached ~30s).
+const getLatestAll = () => cached("latest", 30_000, () => fetchJson(`${PRICES_API}/latest`));
+
+// OSRS GE sell tax: 2% of the sale price, rounded down, capped at 5,000,000
+// per item, and not charged on items priced under 100 gp.
+function geTax(sellPrice) {
+  if (!sellPrice || sellPrice < 100) return 0;
+  return Math.min(Math.floor(sellPrice * 0.02), 5_000_000);
+}
+
+// Flip economics from instant-buy (high) and instant-sell (low) prices.
+function marginInfo(high, low, limit) {
+  if (high == null || low == null) return { margin: null, marginAfterTax: null, roi: null, potentialProfit: null };
+  const margin = high - low;
+  const marginAfterTax = margin - geTax(high);
+  const roi = low > 0 ? marginAfterTax / low : null;
+  const potentialProfit = limit ? marginAfterTax * limit : null;
+  return { margin, marginAfterTax, roi, potentialProfit };
+}
+
 const WIKI_API = "https://oldschool.runescape.wiki/api.php";
 
 const wikiUrl = (title) =>
@@ -705,6 +742,175 @@ app.post("/api/ironman/plan", async (req, res) => {
         : err instanceof Anthropic.RateLimitError
           ? "The scrying pool is overworked (rate limited). Give it a moment and try again."
           : err.message || "Something went wrong building your plan.";
+    send({ type: "error", error: friendly });
+  }
+  res.end();
+});
+
+// ---------------------------------------------------------------------------
+// GE Terminal — market data endpoints + AI market analysis.
+// ---------------------------------------------------------------------------
+
+// Ticker search over the cached item mapping.
+app.get("/api/ge/search", async (req, res) => {
+  if (hiscoresLimited(req.ip)) return res.status(429).json({ error: "Slow down a touch." });
+  const q = (typeof req.query.q === "string" ? req.query.q : "").trim().toLowerCase();
+  if (q.length < 2) return res.json({ results: [] });
+  let mapping;
+  try { mapping = await getItemMapping(); }
+  catch (err) { return res.status(502).json({ error: `Market feed unavailable (${err.message}).` }); }
+  const starts = [], includes = [];
+  for (const it of mapping) {
+    const n = it.name.toLowerCase();
+    if (n === q || n.startsWith(q)) starts.push(it);
+    else if (n.includes(q)) includes.push(it);
+    if (starts.length >= 12) break;
+  }
+  const results = [...starts, ...includes].slice(0, 12).map((i) => ({
+    id: i.id, name: i.name, members: i.members, limit: i.limit ?? null,
+  }));
+  res.json({ results });
+});
+
+// Full quote for one item: mapping + latest prices + 1h volume + margins.
+app.get("/api/ge/item", async (req, res) => {
+  if (hiscoresLimited(req.ip)) return res.status(429).json({ error: "Slow down a touch." });
+  const id = Number(req.query.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid item id." });
+  let mapping, latest, h1;
+  try {
+    [mapping, latest, h1] = await Promise.all([getItemMapping(), getLatestAll(), get1h().catch(() => null)]);
+  } catch (err) {
+    return res.status(502).json({ error: `Market feed unavailable (${err.message}).` });
+  }
+  const item = mapping.find((i) => i.id === id);
+  if (!item) return res.status(404).json({ error: "No such item." });
+  const p = latest.data?.[String(id)] || {};
+  const v = h1?.data?.[String(id)] || {};
+  const volume = (v.highPriceVolume || 0) + (v.lowPriceVolume || 0);
+  res.json({
+    id, name: item.name, members: item.members, examine: item.examine ?? null,
+    limit: item.limit ?? null, highalch: item.highalch ?? null, value: item.value ?? null,
+    high: p.high ?? null, highTime: p.highTime ?? null,
+    low: p.low ?? null, lowTime: p.lowTime ?? null,
+    avgHigh1h: v.avgHighPrice ?? null, avgLow1h: v.avgLowPrice ?? null,
+    volume1h: volume,
+    tax: geTax(p.high),
+    ...marginInfo(p.high, p.low, item.limit),
+  });
+});
+
+// Historical price/volume series for charting.
+app.get("/api/ge/timeseries", async (req, res) => {
+  if (hiscoresLimited(req.ip)) return res.status(429).json({ error: "Slow down a touch." });
+  const id = Number(req.query.id);
+  const step = ["5m", "1h", "6h", "24h"].includes(req.query.timestep) ? req.query.timestep : "1h";
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid item id." });
+  try {
+    const data = await cached(`ts:${id}:${step}`, 60_000, () =>
+      fetchJson(`${PRICES_API}/timeseries?timestep=${step}&id=${id}`));
+    res.json({ id, timestep: step, data: data.data || [] });
+  } catch (err) {
+    res.status(502).json({ error: `Chart feed unavailable (${err.message}).` });
+  }
+});
+
+// Market screeners: most-traded and best-flip candidates (cached ~3 min).
+app.get("/api/ge/screener", async (req, res) => {
+  if (hiscoresLimited(req.ip)) return res.status(429).json({ error: "Slow down a touch." });
+  try {
+    const data = await cached("screener", 180_000, async () => {
+      const [mapping, latest, h1] = await Promise.all([getItemMapping(), getLatestAll(), get1h()]);
+      const byId = new Map(mapping.map((m) => [m.id, m]));
+      const rows = [];
+      for (const [idStr, v] of Object.entries(h1.data || {})) {
+        const id = Number(idStr);
+        const m = byId.get(id);
+        if (!m) continue;
+        const p = latest.data?.[idStr] || {};
+        if (p.high == null || p.low == null) continue;
+        const volume = (v.highPriceVolume || 0) + (v.lowPriceVolume || 0);
+        const info = marginInfo(p.high, p.low, m.limit);
+        rows.push({ id, name: m.name, high: p.high, low: p.low, volume,
+          margin: info.marginAfterTax, roi: info.roi, potentialProfit: info.potentialProfit, limit: m.limit ?? null });
+      }
+      const mostTraded = [...rows].sort((a, b) => b.volume - a.volume).slice(0, 15);
+      // Best flips: meaningfully liquid, positive margin, ranked by profit-per-limit.
+      const bestFlips = rows
+        .filter((r) => r.volume >= 500 && r.margin > 0 && r.potentialProfit != null && r.low >= 100)
+        .sort((a, b) => b.potentialProfit - a.potentialProfit)
+        .slice(0, 15);
+      return { mostTraded, bestFlips, updated: Date.now() };
+    });
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({ error: `Screener feed unavailable (${err.message}).` });
+  }
+});
+
+const GE_ANALYSE_SYSTEM_PROMPT = `You are the Wise Old Man of Draynor Village, moonlighting as a shrewd Grand Exchange market analyst for Old School RuneScape. You are given live market data for one item — instant-buy and instant-sell prices, the margin after the 2% GE sales tax, buy limit, recent 1-hour volume, and a summary of the recent price trend.
+
+You may be asked either for a market ANALYSIS or a price FORECAST — the task is stated at the end of the data.
+
+For an **analysis**, give a crisp trading-desk note:
+- **Snapshot** — one line on price, the after-tax margin, and how liquid it is (volume vs buy limit).
+- **Flip view** — is this a viable flip? Weigh the after-tax margin against the buy limit (profit per cycle), the volume (how fast it fills), and how tight/volatile the spread looks. Give a rough profit-per-limit and whether it's worth the slot.
+- **Trend & investment** — what the recent trend suggests, and any longer-hold thesis or caution.
+- **Risks** — volatility, thin volume, or update/meta risk that could move it.
+
+For a **forecast**, give a short, structured near-term prediction:
+- Open with a single headline line exactly like: **Outlook: ▲ Up | ▼ Down | ► Sideways — confidence Low/Medium/High**.
+- **Likely range** — a rough price band you'd expect over the next day or so, grounded in the recent series.
+- **Why** — the 2–3 signals driving the call (trend direction and slope, volume behaviour, spread, any mean-reversion or momentum).
+- **What would change it** — the concrete thing that would flip your call.
+
+Rules:
+- Ground every number in the data provided; the GE tax (2% of the sell, capped 5m, none under 100 gp) is already reflected in the after-tax margin — factor it in.
+- Be honest, especially on forecasts: this is a game economy driven by player behaviour and Jagex updates — it is NOT truly predictable. Frame a forecast as an informed read on the recent data, never a guarantee, and never invent confidence you don't have. Thin volume = low confidence, say so.
+- Many items look like a margin but are too illiquid to actually flip. Say so.
+- This is game-economy analysis, not real financial advice. Keep a light, in-character tone but keep the numbers straight. Use markdown: bold key figures, short bullets.`;
+
+app.post("/api/ge/analyse", async (req, res) => {
+  if (rateLimited(req.ip)) {
+    return res.status(429).json({ error: "Easy there, adventurer — the old man needs a breather. Try again in a few minutes." });
+  }
+  const summary = typeof req.body?.summary === "string" ? req.body.summary : "";
+  if (!summary.trim()) return res.status(400).json({ error: "No market data to analyse." });
+  if (summary.length > MAX_INPUT_CHARS) return res.status(413).json({ error: "That payload is too large." });
+  const task = req.body?.mode === "forecast"
+    ? "\n\nTask: FORECAST the likely near-term price movement for this item from the data above."
+    : "\n\nTask: ANALYSE this item's market for a flipper/investor from the data above.";
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream", "Cache-Control": "no-cache",
+    Connection: "keep-alive", "X-Accel-Buffering": "no",
+  });
+  if (typeof res.flushHeaders === "function") res.flushHeaders();
+  const send = (event) => res.write(`data: ${JSON.stringify(event)}\n\n`);
+
+  try {
+    const stream = client.messages.stream({
+      model: MODEL,
+      max_tokens: 1800,
+      system: [{ type: "text", text: GE_ANALYSE_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: summary + task }],
+    });
+    stream.on("text", (delta) => send({ type: "text", text: delta }));
+    const message = await stream.finalMessage();
+    if (LOG_USAGE && message.usage) {
+      const u = message.usage;
+      console.log(`[ge] in=${u.input_tokens} out=${u.output_tokens} cache_read=${u.cache_read_input_tokens ?? 0}`);
+    }
+    send(message.stop_reason === "refusal"
+      ? { type: "error", error: "The Wise Old Man declines to analyse that one, adventurer." }
+      : { type: "done" });
+  } catch (err) {
+    const friendly =
+      err instanceof Anthropic.AuthenticationError || /authentication|api.?key/i.test(err.message || "")
+        ? "No valid ANTHROPIC_API_KEY is configured on the server — see the README."
+        : err instanceof Anthropic.RateLimitError
+          ? "The scrying pool is overworked (rate limited). Give it a moment and try again."
+          : err.message || "Something went wrong analysing the market.";
     send({ type: "error", error: friendly });
   }
   res.end();

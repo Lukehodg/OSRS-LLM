@@ -23,7 +23,8 @@ const CLUSTERS = [
     prompt: "What are the most efficient training methods right now for Agility, Runecraft and Slayer?",
   },
   {
-    name: "EXCHANGE", sub: "live prices · flips", angle: 0, accent: true,
+    name: "EXCHANGE", sub: "market terminal", angle: 0, accent: true,
+    opens: "ge",
     prompt: "What's the current Grand Exchange price of a Twisted bow, and is it worth buying for CoX?",
   },
   {
@@ -206,8 +207,9 @@ function buildLabels() {
       `<span class="label-name">${c.name}</span>` +
       `<span class="label-sub">${c.sub}</span>`;
     btn.addEventListener("click", () => {
-      // Some clusters open a picker in the UI instead of firing a fixed prompt.
+      // Some clusters open a richer UI instead of firing a fixed prompt.
       if (c.picker && window.openPicker) window.openPicker(c.picker);
+      else if (c.opens === "ge" && window.openGeTerminal) window.openGeTerminal();
       else sendMessage(c.prompt);
     });
     labelsRoot.appendChild(btn);

@@ -136,6 +136,63 @@
     </div>
   </div>
 
+  <!-- GE Terminal -->
+  <div id="ge" class="ge" hidden role="dialog" aria-modal="true" aria-label="Grand Exchange Terminal">
+    <div class="ge-backdrop" data-ge-dismiss></div>
+    <div class="ge-card">
+      <header class="ge-top">
+        <div class="ge-brand"><span class="ge-led" aria-hidden="true"></span> GE&nbsp;TERMINAL</div>
+        <div class="ge-search-wrap">
+          <input id="ge-search" class="ge-search" type="text" spellcheck="false" autocomplete="off"
+                 placeholder="search an item… (e.g. Twisted bow, Nature rune)" aria-label="Search item" />
+          <div id="ge-results" class="ge-results" hidden></div>
+        </div>
+        <div class="ge-clock" id="ge-clock">--:--:--</div>
+        <button id="ge-close" class="ge-x" title="Close" aria-label="Close" data-ge-dismiss>✕</button>
+      </header>
+
+      <div class="ge-body">
+        <!-- Main: quote + chart -->
+        <section class="ge-main">
+          <div id="ge-quote" class="ge-quote ge-empty-panel">
+            Search an item above, or pick one from the screeners on the right.
+          </div>
+
+          <div class="ge-chart-wrap">
+            <div class="ge-chart-head">
+              <span id="ge-chart-title" class="ge-chart-title">PRICE HISTORY</span>
+              <div class="ge-tabs" id="ge-tabs" role="tablist">
+                <button class="ge-tab" data-step="5m" type="button">5m</button>
+                <button class="ge-tab active" data-step="1h" type="button">1h</button>
+                <button class="ge-tab" data-step="6h" type="button">6h</button>
+                <button class="ge-tab" data-step="24h" type="button">24h</button>
+              </div>
+            </div>
+            <canvas id="ge-chart" class="ge-chart"></canvas>
+            <div id="ge-chart-msg" class="ge-chart-msg">No item selected.</div>
+          </div>
+
+          <div class="ge-actions">
+            <button id="ge-analyse" class="ge-btn" type="button" disabled>◆ Analyse market</button>
+            <button id="ge-forecast" class="ge-btn primary" type="button" disabled>◆ AI price forecast</button>
+          </div>
+        </section>
+
+        <!-- Right rail: screeners -->
+        <aside class="ge-rail">
+          <div class="ge-rail-tabs">
+            <button class="ge-rail-tab active" data-screen="mostTraded" type="button">Most Traded</button>
+            <button class="ge-rail-tab" data-screen="bestFlips" type="button">Best Flips</button>
+          </div>
+          <div id="ge-screen" class="ge-screen">
+            <div class="ge-screen-loading">loading market…</div>
+          </div>
+          <div class="ge-rail-foot">data · prices.runescape.wiki</div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
   <!-- Command line, bottom-center -->
   <form id="chat-form" class="command" autocomplete="off">
     <span class="command-rune" aria-hidden="true">‹</span>
@@ -177,5 +234,6 @@
   <script src="coach.js"></script>
   <script src="ironman.js"></script>
   <script src="pickers.js"></script>
+  <script src="ge.js"></script>
 </body>
 </html>
