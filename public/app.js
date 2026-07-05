@@ -8,11 +8,13 @@
 // The sage's domains. Angles in degrees: -90 is straight up.
 const CLUSTERS = [
   {
-    name: "QUESTS", sub: "guides · order · requirements", angle: -135,
+    name: "QUESTS", sub: "pick a quest · guides", angle: -135,
+    picker: "quests",
     prompt: "Which quests should every new member rush first, and why?",
   },
   {
-    name: "COMBAT", sub: "bossing · slayer · gear", angle: -45,
+    name: "COMBAT", sub: "pick a boss · strategy", angle: -45,
+    picker: "bosses",
     prompt: "I'm a mid-level account (base 70s). Give me a gear and quest roadmap to kill Vorkath.",
   },
   {
@@ -205,7 +207,7 @@ function buildLabels() {
       `<span class="label-sub">${c.sub}</span>`;
     btn.addEventListener("click", () => {
       // Some clusters open a picker in the UI instead of firing a fixed prompt.
-      if (c.picker === "skills" && window.openSkillsPicker) window.openSkillsPicker();
+      if (c.picker && window.openPicker) window.openPicker(c.picker);
       else sendMessage(c.prompt);
     });
     labelsRoot.appendChild(btn);

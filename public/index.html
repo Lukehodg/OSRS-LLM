@@ -125,14 +125,14 @@
     </div>
   </div>
 
-  <!-- Skills picker -->
-  <div id="skills" class="skills" hidden role="dialog" aria-modal="true" aria-label="Choose a skill">
-    <div class="skills-backdrop" data-skills-dismiss></div>
-    <div class="skills-card">
-      <button id="skills-close" class="skills-x" title="Close" aria-label="Close" data-skills-dismiss>✕</button>
-      <div class="skills-title">CHOOSE&nbsp;A&nbsp;SKILL</div>
-      <p class="skills-sub">Pick a skill and the old man will chart the best way to train it.</p>
-      <div id="skills-grid" class="skills-grid"></div>
+  <!-- Generic picker (skills / bosses / quests) -->
+  <div id="picker" class="picker" hidden role="dialog" aria-modal="true" aria-labelledby="picker-title">
+    <div class="picker-backdrop" data-picker-dismiss></div>
+    <div class="picker-card">
+      <button id="picker-close" class="picker-x" title="Close" aria-label="Close" data-picker-dismiss>✕</button>
+      <div id="picker-title" class="picker-title">CHOOSE</div>
+      <p id="picker-sub" class="picker-sub"></p>
+      <div id="picker-grid" class="picker-grid"></div>
     </div>
   </div>
 
@@ -176,6 +176,6 @@
   <script src="app.js"></script>
   <script src="coach.js"></script>
   <script src="ironman.js"></script>
-  <script src="skills.js"></script>
+  <script src="pickers.js"></script>
 </body>
 </html>

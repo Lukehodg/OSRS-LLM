@@ -45,6 +45,12 @@ A live, personalised answer to static gear-progression charts (like Ladlor's): i
    - **locked** — showing the exact gap (e.g. *Abyssal whip · Slayer 78/85*).
 3. **Get my personalised plan** → your stats and milestone status are sent to the Wise Old Man, who returns a prioritised, ironman-aware plan grounded in your actual account (*where you are · do these next · on the horizon · grind for today*) — no "buy it off the GE" advice, because irons can't.
 
+### Constellation pickers
+
+Three constellations open an in-UI picker instead of firing a canned question: **Skilling** → all 23 skills (training guides), **Combat** → 18 iconic bosses (strategy, gear, requirements), **Quests** → 12 high-impact quests (requirements, walkthrough, rewards). Each tile uses its real OSRS Wiki icon (with emoji fallback); selecting one asks the sage about it. All three are driven by one config in `public/pickers.js` — adding another picker is just a new entry.
+
+---
+
 Each milestone shows its real **OSRS Wiki item sprite** (loaded via the wiki's `Special:FilePath`), with an emoji fallback if an image can't load — so the board always renders cleanly. The milestone dataset lives in `public/ironman-data.json` (easy to extend; each entry's `img` is the wiki file name). Hiscores lookups use a separate, generous rate limit (`HISCORES_LIMIT_PER_10_MIN`) since they don't cost anything; only the AI plan draws on the model budget.
 
 The interface is a **living star chart**: the Wise Old Man floats in a golden particle nebula at the center of a dark void, surrounded by six hand-grown constellations — Quests, Combat, Skilling, Exchange, Hiscores, Lore. Click a constellation (or type into the command line beneath the stars) and the conversation slides in as a translucent panel. The nebula brightens while he thinks and burns ember-orange while he scries live data.
