@@ -1,5 +1,5 @@
 {
-  "note": "Curated OSRS ironman progression milestones. Requirements use exact hiscore skill names. `req.skills` are level thresholds evaluated against live hiscores; `req.note` describes non-skill gating (quests, prerequisites) shown to the player but not auto-evaluated.",
+  "note": "Curated OSRS ironman progression milestones. Requirements use exact hiscore skill names. `req.skills` are level thresholds evaluated against live hiscores; `req.note` describes non-skill gating (quests, prerequisites). `img` is an OSRS Wiki file name (rendered via Special:FilePath); `icon` is the emoji fallback shown if the image fails to load.",
   "tracks": [
     {
       "id": "foundations",
@@ -7,12 +7,12 @@
       "icon": "🌱",
       "blurb": "Early must-haves every iron rushes.",
       "items": [
-        { "id": "graceful", "name": "Graceful outfit", "icon": "🏃", "req": { "skills": { "Agility": 30 }, "note": "Buy piece-by-piece with Marks of Grace from rooftop courses." }, "why": "−20% run-energy drain; you'll wear it for thousands of hours." },
-        { "id": "prayer43", "name": "Protect prayers (43 Prayer)", "icon": "🙏", "req": { "skills": { "Prayer": 43 }, "note": "Bury/offer bones; build a gilded altar later." }, "why": "Protect-from-Melee/Missiles/Magic makes almost all PvM survivable." },
-        { "id": "barrows-gloves", "name": "Barrows gloves", "icon": "🧤", "req": { "skills": { "Defence": 40 }, "note": "Recipe for Disaster (all subquests)." }, "why": "Best-in-slot gloves for most of the game — a huge early spike." },
-        { "id": "fire-cape", "name": "Fire cape", "icon": "🔥", "req": { "skills": { "Ranged": 43, "Defence": 43, "Prayer": 43 }, "note": "TzTok-Jad, Fight Caves. Range-and-pray it." }, "why": "Best melee cape until infernal; a rite of passage." },
-        { "id": "ardy-cloak", "name": "Ardougne cloak (diary)", "icon": "🧥", "req": { "skills": {}, "note": "Ardougne Easy/Medium diaries." }, "why": "Free unlimited Monastery teleports and useful perks." },
-        { "id": "rune-pouch", "name": "Rune pouch", "icon": "👝", "req": { "skills": { "Slayer": 1 }, "note": "Slayer reward, LMS, or Wintertodt." }, "why": "Carry three rune types — enables alching, teleports and combat spells anywhere." }
+        { "id": "graceful", "name": "Graceful outfit", "icon": "🏃", "img": "Graceful_hood", "req": { "skills": { "Agility": 30 }, "note": "Buy piece-by-piece with Marks of Grace from rooftop courses." }, "why": "−20% run-energy drain; you'll wear it for thousands of hours." },
+        { "id": "prayer43", "name": "Protect prayers (43 Prayer)", "icon": "🙏", "img": "Prayer_potion(4)", "req": { "skills": { "Prayer": 43 }, "note": "Bury/offer bones; build a gilded altar later." }, "why": "Protect-from-Melee/Missiles/Magic makes almost all PvM survivable." },
+        { "id": "barrows-gloves", "name": "Barrows gloves", "icon": "🧤", "img": "Barrows_gloves", "req": { "skills": { "Defence": 40 }, "note": "Recipe for Disaster (all subquests)." }, "why": "Best-in-slot gloves for most of the game — a huge early spike." },
+        { "id": "fire-cape", "name": "Fire cape", "icon": "🔥", "img": "Fire_cape", "req": { "skills": { "Ranged": 43, "Defence": 43, "Prayer": 43 }, "note": "TzTok-Jad, Fight Caves. Range-and-pray it." }, "why": "Best melee cape until infernal; a rite of passage." },
+        { "id": "ardy-cloak", "name": "Ardougne cloak (diary)", "icon": "🧥", "img": "Ardougne_cloak_2", "req": { "skills": {}, "note": "Ardougne Easy/Medium diaries." }, "why": "Free unlimited Monastery teleports and useful perks." },
+        { "id": "rune-pouch", "name": "Rune pouch", "icon": "👝", "img": "Rune_pouch", "req": { "skills": { "Slayer": 1 }, "note": "Slayer reward, LMS, or Wintertodt." }, "why": "Carry three rune types — enables alching, teleports and combat spells anywhere." }
       ]
     },
     {
@@ -21,13 +21,13 @@
       "icon": "⚔️",
       "blurb": "Attack/Strength/Defence gear tiers.",
       "items": [
-        { "id": "rune-scim", "name": "Rune scimitar", "icon": "🗡️", "req": { "skills": { "Attack": 40 } }, "why": "Cheap, fast, self-obtainable — your first real weapon." },
-        { "id": "dragon-scim", "name": "Dragon scimitar", "icon": "🐲", "req": { "skills": { "Attack": 60 }, "note": "Monkey Madness I." }, "why": "Best DPS scimitar for ages; carries you through mid-game." },
-        { "id": "dragon-defender", "name": "Dragon defender", "icon": "🛡️", "req": { "skills": { "Attack": 40, "Defence": 40 }, "note": "Warriors' Guild cyclopes." }, "why": "Best-in-slot offhand for melee until Avernic." },
-        { "id": "fighter-torso", "name": "Fighter torso", "icon": "🎽", "req": { "skills": {}, "note": "Barbarian Assault." }, "why": "Best-in-slot Strength body until Bandos — grab it early." },
-        { "id": "neitiznot", "name": "Helm of neitiznot", "icon": "⛑️", "req": { "skills": { "Defence": 55 }, "note": "The Fremennik Isles." }, "why": "Great all-round helm with prayer bonus." },
-        { "id": "whip", "name": "Abyssal whip", "icon": "🪱", "req": { "skills": { "Attack": 70, "Slayer": 85 }, "note": "Abyssal demons drop it." }, "why": "The iconic mid-game weapon; fast and accurate." },
-        { "id": "bandos", "name": "Bandos armour", "icon": "🐗", "req": { "skills": { "Defence": 65 }, "note": "General Graardor, God Wars Dungeon." }, "why": "Best-in-slot Strength body and legs for years." }
+        { "id": "rune-scim", "name": "Rune scimitar", "icon": "🗡️", "img": "Rune_scimitar", "req": { "skills": { "Attack": 40 } }, "why": "Cheap, fast, self-obtainable — your first real weapon." },
+        { "id": "dragon-scim", "name": "Dragon scimitar", "icon": "🐲", "img": "Dragon_scimitar", "req": { "skills": { "Attack": 60 }, "note": "Monkey Madness I." }, "why": "Best DPS scimitar for ages; carries you through mid-game." },
+        { "id": "dragon-defender", "name": "Dragon defender", "icon": "🛡️", "img": "Dragon_defender", "req": { "skills": { "Attack": 40, "Defence": 40 }, "note": "Warriors' Guild cyclopes." }, "why": "Best-in-slot offhand for melee until Avernic." },
+        { "id": "fighter-torso", "name": "Fighter torso", "icon": "🎽", "img": "Fighter_torso", "req": { "skills": {}, "note": "Barbarian Assault." }, "why": "Best-in-slot Strength body until Bandos — grab it early." },
+        { "id": "neitiznot", "name": "Helm of neitiznot", "icon": "⛑️", "img": "Helm_of_neitiznot", "req": { "skills": { "Defence": 55 }, "note": "The Fremennik Isles." }, "why": "Great all-round helm with prayer bonus." },
+        { "id": "whip", "name": "Abyssal whip", "icon": "🪱", "img": "Abyssal_whip", "req": { "skills": { "Attack": 70, "Slayer": 85 }, "note": "Abyssal demons drop it." }, "why": "The iconic mid-game weapon; fast and accurate." },
+        { "id": "bandos", "name": "Bandos armour", "icon": "🐗", "img": "Bandos_chestplate", "req": { "skills": { "Defence": 65 }, "note": "General Graardor, God Wars Dungeon." }, "why": "Best-in-slot Strength body and legs for years." }
       ]
     },
     {
@@ -36,12 +36,12 @@
       "icon": "🏹",
       "blurb": "Bows, crossbows and d'hide.",
       "items": [
-        { "id": "rune-cbow", "name": "Rune crossbow", "icon": "🏹", "req": { "skills": { "Ranged": 61 } }, "why": "With broad/ruby/diamond bolts it clears the mid-game and early bosses." },
-        { "id": "black-dhide", "name": "Black d'hide body", "icon": "🥋", "req": { "skills": { "Ranged": 70, "Defence": 40 } }, "why": "Cheap, self-craftable ranged body with solid defence." },
-        { "id": "assembler", "name": "Ava's assembler", "icon": "🪶", "req": { "skills": { "Ranged": 70 }, "note": "Dragon Slayer II + Ava's chain." }, "why": "Best ranged cape: ammo recovery + damage bonus." },
-        { "id": "blowpipe", "name": "Toxic blowpipe", "icon": "🐍", "req": { "skills": { "Ranged": 75 }, "note": "Zulrah drop; needs 78 Fishing to fully charge scales." }, "why": "Absurd DPS — the single biggest ranged power spike in the game." },
-        { "id": "dhcb", "name": "Dragon hunter crossbow", "icon": "🐉", "req": { "skills": { "Ranged": 61 }, "note": "Chambers of Xeric drop." }, "why": "Best-in-slot vs dragons — melts Vorkath and more." },
-        { "id": "masori", "name": "Masori armour", "icon": "🦅", "req": { "skills": { "Ranged": 80 }, "note": "Tombs of Amascut." }, "why": "Best-in-slot light ranged armour endgame." }
+        { "id": "rune-cbow", "name": "Rune crossbow", "icon": "🏹", "img": "Rune_crossbow", "req": { "skills": { "Ranged": 61 } }, "why": "With broad/ruby/diamond bolts it clears the mid-game and early bosses." },
+        { "id": "black-dhide", "name": "Black d'hide body", "icon": "🥋", "img": "Black_d'hide_body", "req": { "skills": { "Ranged": 70, "Defence": 40 } }, "why": "Cheap, self-craftable ranged body with solid defence." },
+        { "id": "assembler", "name": "Ava's assembler", "icon": "🪶", "img": "Ava's_assembler", "req": { "skills": { "Ranged": 70 }, "note": "Dragon Slayer II + Ava's chain." }, "why": "Best ranged cape: ammo recovery + damage bonus." },
+        { "id": "blowpipe", "name": "Toxic blowpipe", "icon": "🐍", "img": "Toxic_blowpipe", "req": { "skills": { "Ranged": 75 }, "note": "Zulrah drop; needs 78 Fishing to fully charge scales." }, "why": "Absurd DPS — the single biggest ranged power spike in the game." },
+        { "id": "dhcb", "name": "Dragon hunter crossbow", "icon": "🐉", "img": "Dragon_hunter_crossbow", "req": { "skills": { "Ranged": 61 }, "note": "Chambers of Xeric drop." }, "why": "Best-in-slot vs dragons — melts Vorkath and more." },
+        { "id": "masori", "name": "Masori armour", "icon": "🦅", "img": "Masori_body", "req": { "skills": { "Ranged": 80 }, "note": "Tombs of Amascut." }, "why": "Best-in-slot light ranged armour endgame." }
       ]
     },
     {
@@ -50,12 +50,12 @@
       "icon": "🔮",
       "blurb": "Robes, tridents and staves.",
       "items": [
-        { "id": "mystic", "name": "Mystic robes", "icon": "🧙", "req": { "skills": { "Magic": 40, "Defence": 20 } }, "why": "First real mage set; cheap and self-obtainable." },
-        { "id": "god-cape", "name": "Imbued god cape", "icon": "🌀", "req": { "skills": { "Magic": 75 }, "note": "Mage Arena I & II." }, "why": "Best-in-slot magic cape." },
-        { "id": "trident-seas", "name": "Trident of the seas", "icon": "🔱", "req": { "skills": { "Magic": 75, "Slayer": 87 }, "note": "Kraken drop." }, "why": "Reliable, self-charging magic weapon for slayer and bossing." },
-        { "id": "occult", "name": "Occult necklace", "icon": "📿", "req": { "skills": { "Slayer": 93 }, "note": "Thermonuclear smoke devil." }, "why": "Best-in-slot magic-damage amulet." },
-        { "id": "ancients", "name": "Ancient Magicks + staff", "icon": "❄️", "req": { "skills": { "Magic": 70 }, "note": "Desert Treasure I." }, "why": "Ice Barrage freezes for safe-spotting and Barrows/CoX." },
-        { "id": "shadow", "name": "Tumeken's shadow", "icon": "🌑", "req": { "skills": { "Magic": 85 }, "note": "Tombs of Amascut (rare)." }, "why": "The best magic weapon in the game — endgame chase item." }
+        { "id": "mystic", "name": "Mystic robes", "icon": "🧙", "img": "Mystic_robe_top", "req": { "skills": { "Magic": 40, "Defence": 20 } }, "why": "First real mage set; cheap and self-obtainable." },
+        { "id": "god-cape", "name": "Imbued god cape", "icon": "🌀", "img": "Imbued_guthix_cape", "req": { "skills": { "Magic": 75 }, "note": "Mage Arena I & II." }, "why": "Best-in-slot magic cape." },
+        { "id": "trident-seas", "name": "Trident of the seas", "icon": "🔱", "img": "Trident_of_the_seas", "req": { "skills": { "Magic": 75, "Slayer": 87 }, "note": "Kraken drop." }, "why": "Reliable, self-charging magic weapon for slayer and bossing." },
+        { "id": "occult", "name": "Occult necklace", "icon": "📿", "img": "Occult_necklace", "req": { "skills": { "Slayer": 93 }, "note": "Thermonuclear smoke devil." }, "why": "Best-in-slot magic-damage amulet." },
+        { "id": "ancients", "name": "Ancient Magicks + staff", "icon": "❄️", "img": "Ancient_staff", "req": { "skills": { "Magic": 70 }, "note": "Desert Treasure I." }, "why": "Ice Barrage freezes for safe-spotting and Barrows/CoX." },
+        { "id": "shadow", "name": "Tumeken's shadow", "icon": "🌑", "img": "Tumeken's_shadow", "req": { "skills": { "Magic": 85 }, "note": "Tombs of Amascut (rare)." }, "why": "The best magic weapon in the game — endgame chase item." }
       ]
     },
     {
@@ -64,12 +64,12 @@
       "icon": "💀",
       "blurb": "Unlocks gated by Slayer level.",
       "items": [
-        { "id": "slayer-helm", "name": "Slayer helmet", "icon": "😈", "req": { "skills": { "Slayer": 55, "Defence": 10, "Crafting": 55 }, "note": "Black mask + full slayer helm parts." }, "why": "Best-in-slot slayer helm; +damage vs task and great stats." },
-        { "id": "abby-demons", "name": "Abyssal demons (whip)", "icon": "🪱", "req": { "skills": { "Slayer": 85 } }, "why": "Unlocks whip + abyssal dagger drops." },
-        { "id": "smoke-devils", "name": "Smoke devils (occult)", "icon": "💨", "req": { "skills": { "Slayer": 93 } }, "why": "Occult necklace source." },
-        { "id": "kraken", "name": "Kraken (trident)", "icon": "🦑", "req": { "skills": { "Slayer": 87 } }, "why": "Trident of the seas + tentacle whip upgrade." },
-        { "id": "cerberus", "name": "Cerberus (boots)", "icon": "🐕", "req": { "skills": { "Slayer": 91 } }, "why": "Primordial/Pegasian/Eternal crystals → best-in-slot boots." },
-        { "id": "hydra", "name": "Alchemical Hydra", "icon": "🐉", "req": { "skills": { "Slayer": 95 } }, "why": "Brimstone ring + hydra leather; a major slayer money/upgrade sink." }
+        { "id": "slayer-helm", "name": "Slayer helmet", "icon": "😈", "img": "Slayer_helmet", "req": { "skills": { "Slayer": 55, "Defence": 10, "Crafting": 55 }, "note": "Black mask + full slayer helm parts." }, "why": "Best-in-slot slayer helm; +damage vs task and great stats." },
+        { "id": "abby-demons", "name": "Abyssal demons (whip)", "icon": "🪱", "img": "Abyssal_whip", "req": { "skills": { "Slayer": 85 } }, "why": "Unlocks whip + abyssal dagger drops." },
+        { "id": "smoke-devils", "name": "Smoke devils (occult)", "icon": "💨", "img": "Occult_necklace", "req": { "skills": { "Slayer": 93 } }, "why": "Occult necklace source." },
+        { "id": "kraken", "name": "Kraken (trident)", "icon": "🦑", "img": "Trident_of_the_seas", "req": { "skills": { "Slayer": 87 } }, "why": "Trident of the seas + tentacle whip upgrade." },
+        { "id": "cerberus", "name": "Cerberus (boots)", "icon": "🐕", "img": "Primordial_boots", "req": { "skills": { "Slayer": 91 } }, "why": "Primordial/Pegasian/Eternal crystals → best-in-slot boots." },
+        { "id": "hydra", "name": "Alchemical Hydra", "icon": "🐉", "img": "Brimstone_ring", "req": { "skills": { "Slayer": 95 } }, "why": "Brimstone ring + hydra leather; a major slayer money/upgrade sink." }
       ]
     },
     {
@@ -78,12 +78,12 @@
       "icon": "🏆",
       "blurb": "Readiness to attempt key bosses.",
       "items": [
-        { "id": "zulrah", "name": "Zulrah", "icon": "🐍", "req": { "skills": { "Ranged": 75, "Magic": 75 }, "note": "Regicide subquest to access." }, "why": "Blowpipe, trident and huge GP/uniques — a self-sufficiency engine." },
-        { "id": "vorkath", "name": "Vorkath", "icon": "🐲", "req": { "skills": { "Ranged": 75 }, "note": "Dragon Slayer II. Dragonbane weapon strongly wanted." }, "why": "Reliable big money and dragon items; superior slayer target." },
-        { "id": "gwd", "name": "God Wars Dungeon", "icon": "⚔️", "req": { "skills": { "Attack": 70, "Strength": 70, "Defence": 70, "Ranged": 70 }, "note": "Various access requirements per boss." }, "why": "Bandos, Armadyl and more best-in-slot gear." },
-        { "id": "cox", "name": "Chambers of Xeric", "icon": "🗿", "req": { "skills": { "Attack": 80, "Strength": 80, "Defence": 75, "Ranged": 80, "Magic": 80 }, "note": "Team or solo; big stat wall." }, "why": "Twisted bow, DHCB, Kodai and prayer scrolls." },
-        { "id": "toa", "name": "Tombs of Amascut", "icon": "🏛️", "req": { "skills": { "Ranged": 75, "Magic": 75 }, "note": "Scalable — start at low invocations." }, "why": "Masori, shadow, fang and lightbearer — extremely iron-friendly." },
-        { "id": "inferno", "name": "The Inferno (infernal cape)", "icon": "🌋", "req": { "skills": { "Ranged": 90, "Defence": 70, "Prayer": 74 }, "note": "The ultimate solo challenge." }, "why": "Best-in-slot melee cape and bragging rights." }
+        { "id": "zulrah", "name": "Zulrah", "icon": "🐍", "img": "Tanzanite_fang", "req": { "skills": { "Ranged": 75, "Magic": 75 }, "note": "Regicide subquest to access." }, "why": "Blowpipe, trident and huge GP/uniques — a self-sufficiency engine." },
+        { "id": "vorkath", "name": "Vorkath", "icon": "🐲", "img": "Dragonbone_necklace", "req": { "skills": { "Ranged": 75 }, "note": "Dragon Slayer II. Dragonbane weapon strongly wanted." }, "why": "Reliable big money and dragon items; superior slayer target." },
+        { "id": "gwd", "name": "God Wars Dungeon", "icon": "⚔️", "img": "Bandos_chestplate", "req": { "skills": { "Attack": 70, "Strength": 70, "Defence": 70, "Ranged": 70 }, "note": "Various access requirements per boss." }, "why": "Bandos, Armadyl and more best-in-slot gear." },
+        { "id": "cox", "name": "Chambers of Xeric", "icon": "🗿", "img": "Twisted_bow", "req": { "skills": { "Attack": 80, "Strength": 80, "Defence": 75, "Ranged": 80, "Magic": 80 }, "note": "Team or solo; big stat wall." }, "why": "Twisted bow, DHCB, Kodai and prayer scrolls." },
+        { "id": "toa", "name": "Tombs of Amascut", "icon": "🏛️", "img": "Osmumten's_fang", "req": { "skills": { "Ranged": 75, "Magic": 75 }, "note": "Scalable — start at low invocations." }, "why": "Masori, shadow, fang and lightbearer — extremely iron-friendly." },
+        { "id": "inferno", "name": "The Inferno (infernal cape)", "icon": "🌋", "img": "Infernal_cape", "req": { "skills": { "Ranged": 90, "Defence": 70, "Prayer": 74 }, "note": "The ultimate solo challenge." }, "why": "Best-in-slot melee cape and bragging rights." }
       ]
     },
     {
@@ -92,13 +92,13 @@
       "icon": "🧪",
       "blurb": "The engine that feeds your PvM.",
       "items": [
-        { "id": "herb-super", "name": "Super combat potions (Herb)", "icon": "⚗️", "req": { "skills": { "Herblore": 66 } }, "why": "Self-made super combats are a must for serious PvM." },
-        { "id": "herb-prayer", "name": "Prayer potions (Herb 38+)", "icon": "🧴", "req": { "skills": { "Herblore": 38 } }, "why": "Prayer potions gate almost all bossing longevity." },
-        { "id": "farm-herbs", "name": "Herb farming runs", "icon": "🌿", "req": { "skills": { "Farming": 32 } }, "why": "Your renewable herb supply — the backbone of Herblore." },
-        { "id": "gilded-altar", "name": "Gilded altar (Con 75)", "icon": "⛪", "req": { "skills": { "Construction": 75 } }, "why": "Fast Prayer XP and a rejuvenation pool at home." },
-        { "id": "sharks", "name": "Shark supply (Cooking/Fishing)", "icon": "🦈", "req": { "skills": { "Fishing": 76, "Cooking": 80 } }, "why": "Renewable high-heal food for hard PvM." },
-        { "id": "blood-runes", "name": "Blood rune crafting", "icon": "🩸", "req": { "skills": { "Runecraft": 77, "Mining": 38 }, "note": "Blood Altar, Zeah." }, "why": "Self-sufficient blood runes power trident/ancients/blood spells." },
-        { "id": "piety", "name": "Piety (70 Prayer)", "icon": "✨", "req": { "skills": { "Prayer": 70, "Defence": 70 }, "note": "Knight Waves / King's Ransom." }, "why": "+strength/attack prayer — a flat DPS boost everywhere." }
+        { "id": "herb-super", "name": "Super combat potions (Herb)", "icon": "⚗️", "img": "Super_combat_potion(4)", "req": { "skills": { "Herblore": 66 } }, "why": "Self-made super combats are a must for serious PvM." },
+        { "id": "herb-prayer", "name": "Prayer potions (Herb 38+)", "icon": "🧴", "img": "Prayer_potion(4)", "req": { "skills": { "Herblore": 38 } }, "why": "Prayer potions gate almost all bossing longevity." },
+        { "id": "farm-herbs", "name": "Herb farming runs", "icon": "🌿", "img": "Ranarr_seed", "req": { "skills": { "Farming": 32 } }, "why": "Your renewable herb supply — the backbone of Herblore." },
+        { "id": "gilded-altar", "name": "Gilded altar (Con 75)", "icon": "⛪", "img": "Marble_block", "req": { "skills": { "Construction": 75 } }, "why": "Fast Prayer XP and a rejuvenation pool at home." },
+        { "id": "sharks", "name": "Shark supply (Cooking/Fishing)", "icon": "🦈", "img": "Shark", "req": { "skills": { "Fishing": 76, "Cooking": 80 } }, "why": "Renewable high-heal food for hard PvM." },
+        { "id": "blood-runes", "name": "Blood rune crafting", "icon": "🩸", "img": "Blood_rune", "req": { "skills": { "Runecraft": 77, "Mining": 38 }, "note": "Blood Altar, Zeah." }, "why": "Self-sufficient blood runes power trident/ancients/blood spells." },
+        { "id": "piety", "name": "Piety (70 Prayer)", "icon": "✨", "img": "Prayer_cape", "req": { "skills": { "Prayer": 70, "Defence": 70 }, "note": "Knight Waves / King's Ransom." }, "why": "+strength/attack prayer — a flat DPS boost everywhere." }
       ]
     }
   ]

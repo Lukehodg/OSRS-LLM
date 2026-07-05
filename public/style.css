@@ -858,7 +858,25 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
 .node:hover { background: rgba(255, 255, 255, 0.05); transform: translateX(2px); }
-.node-icon { font-size: 18px; flex: 0 0 auto; width: 22px; text-align: center; }
+.node-icon {
+  font-size: 18px;
+  flex: 0 0 auto;
+  width: 30px; height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.node-icon .item-img {
+  max-width: 30px;
+  max-height: 30px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  /* OSRS sprites are small pixel art — keep them crisp, not blurred. */
+  image-rendering: pixelated;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+.node.done .item-img { opacity: 0.55; }
 .node-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
 .node-name { font-size: 14.5px; color: var(--text); }
 .node-req { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.3px; color: var(--text-faint); }

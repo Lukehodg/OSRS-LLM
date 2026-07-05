@@ -175,6 +175,27 @@
 
   const rank = (s) => (s === "ready" ? 0 : s === "locked" ? 1 : 2);
 
+  // OSRS Wiki item sprite; Special:FilePath resolves the name to the file.
+  const wikiImg = (name) =>
+    `https://oldschool.runescape.wiki/w/Special:FilePath/${encodeURIComponent(name + ".png")}`;
+
+  function iconEl(item) {
+    const span = document.createElement("span");
+    span.className = "node-icon";
+    if (item.img) {
+      const img = document.createElement("img");
+      img.className = "item-img";
+      img.alt = "";
+      img.src = wikiImg(item.img);
+      // If the sprite 404s or is blocked, fall back to the emoji.
+      img.addEventListener("error", () => { span.textContent = item.icon; });
+      span.appendChild(img);
+    } else {
+      span.textContent = item.icon;
+    }
+    return span;
+  }
+
   function nodeEl(item, ev) {
     const el = document.createElement("button");
     el.type = "button";
@@ -185,11 +206,18 @@
         : item.req && item.req.note
           ? item.req.note
           : reqSummary(item);
-    el.innerHTML =
-      `<span class="node-icon">${item.icon}</span>` +
-      `<span class="node-main"><span class="node-name">${escapeHtml(item.name)}</span>` +
-      `<span class="node-req">${escapeHtml(reqText)}</span></span>` +
-      `<span class="node-tick" aria-hidden="true"></span>`;
+
+    const main = document.createElement("span");
+    main.className = "node-main";
+    main.innerHTML =
+      `<span class="node-name">${escapeHtml(item.name)}</span>` +
+      `<span class="node-req">${escapeHtml(reqText)}</span>`;
+
+    const tick = document.createElement("span");
+    tick.className = "node-tick";
+    tick.setAttribute("aria-hidden", "true");
+
+    el.append(iconEl(item), main, tick);
     el.title = item.why || "";
     el.addEventListener("click", () => {
       if (acquired.has(item.id)) acquired.delete(item.id);
