@@ -332,9 +332,7 @@ const TOOL_HANDLERS = {
 // Sliding window per IP, in memory (fine for a single instance).
 // ---------------------------------------------------------------------------
 
-const RATE_LIMIT = Number(process.env.RATE_LIMIT_PER_10_MIN || 15);
 const RATE_WINDOW_MS = 10 * 60 * 1000;
-const hits = new Map(); // ip -> [timestamps]
 
 // Cap the total conversation size sent to the model, bounding per-call spend.
 const MAX_INPUT_CHARS = Number(process.env.MAX_INPUT_CHARS || 24000);
@@ -345,26 +343,35 @@ const MAX_FRAMES = Number(process.env.MAX_FRAMES || 6);
 const MAX_FRAME_BYTES = 900_000; // per decoded frame, ~ generous for 900px JPEG
 const ALLOWED_FRAME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
-function rateLimited(ip) {
-  const now = Date.now();
-  const list = (hits.get(ip) || []).filter((t) => now - t < RATE_WINDOW_MS);
-  if (list.length >= RATE_LIMIT) {
+// Factory: sliding-window per-IP limiter. Separate buckets for paid model
+// calls (tight) vs. free upstream lookups like hiscores (generous).
+function makeLimiter(max) {
+  const hits = new Map(); // ip -> [timestamps]
+  const check = (ip) => {
+    const now = Date.now();
+    const list = (hits.get(ip) || []).filter((t) => now - t < RATE_WINDOW_MS);
+    if (list.length >= max) {
+      hits.set(ip, list);
+      return true;
+    }
+    list.push(now);
     hits.set(ip, list);
-    return true;
-  }
-  list.push(now);
-  hits.set(ip, list);
-  return false;
+    return false;
+  };
+  setInterval(() => {
+    const now = Date.now();
+    for (const [ip, list] of hits) {
+      const fresh = list.filter((t) => now - t < RATE_WINDOW_MS);
+      if (fresh.length === 0) hits.delete(ip);
+      else hits.set(ip, fresh);
+    }
+  }, RATE_WINDOW_MS).unref();
+  return check;
 }
 
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, list] of hits) {
-    const fresh = list.filter((t) => now - t < RATE_WINDOW_MS);
-    if (fresh.length === 0) hits.delete(ip);
-    else hits.set(ip, fresh);
-  }
-}, RATE_WINDOW_MS).unref();
+// Model calls (cost money) share one tight budget; hiscores lookups are free.
+const rateLimited = makeLimiter(Number(process.env.RATE_LIMIT_PER_10_MIN || 15));
+const hiscoresLimited = makeLimiter(Number(process.env.HISCORES_LIMIT_PER_10_MIN || 60));
 
 // ---------------------------------------------------------------------------
 // Chat endpoint — streams SSE events to the browser while running the
@@ -557,9 +564,13 @@ app.post("/api/analyse", async (req, res) => {
   }
 
   const note = typeof req.body?.note === "string" ? req.body.note.slice(0, 500) : "";
+  const grade = req.body?.mode === "grade";
   const instruction =
     (note ? `The adventurer says: "${note}".\n\n` : "") +
-    `Here are ${imageBlocks.length} frames from my gameplay, in order (roughly a couple of seconds apart). Analyse them and coach me on where to improve.`;
+    `Here are ${imageBlocks.length} frames from my gameplay, in order (roughly a couple of seconds apart). ` +
+    (grade
+      ? `Grade this trip. Open with a headline score out of 10 (as **Score: X/10**), then a one-line verdict, then the usual breakdown (what I see / doing well / where to improve / next step). Be a fair but honest examiner — reserve 9–10 for genuinely clean play.`
+      : `Analyse them and coach me on where to improve.`);
 
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
@@ -602,6 +613,98 @@ app.post("/api/analyse", async (req, res) => {
         : err instanceof Anthropic.RateLimitError
           ? "The scrying pool is overworked (rate limited). Give it a moment and try again."
           : err.message || "Something went wrong analysing your gameplay.";
+    send({ type: "error", error: friendly });
+  }
+  res.end();
+});
+
+// ---------------------------------------------------------------------------
+// Ironman progression — live hiscores lookup + personalised plan.
+// ---------------------------------------------------------------------------
+
+// Free upstream lookup: fetch a player's hiscores for the progression board.
+app.get("/api/hiscores", async (req, res) => {
+  if (hiscoresLimited(req.ip)) {
+    return res.status(429).json({ error: "Too many lookups — give it a minute, adventurer." });
+  }
+  const player = typeof req.query.player === "string" ? req.query.player.trim() : "";
+  if (!player || player.length > 12) {
+    return res.status(400).json({ error: "Enter a valid RuneScape display name (max 12 characters)." });
+  }
+  const result = await getPlayerStats({ player });
+  if (result.error) return res.status(404).json(result);
+  res.json(result);
+});
+
+const IRONMAN_SYSTEM_PROMPT = `You are the Wise Old Man of Draynor Village, acting as a dedicated Old School RuneScape IRONMAN progression coach. The adventurer plays ironman mode: no Grand Exchange, no trading — everything must be self-obtained. Never suggest buying anything; suggest how to obtain or make it.
+
+You are given the player's REAL live stats plus a computed status of curated progression milestones (already obtained / ready now / still locked with the gating requirement). Build them a personalised, prioritised plan grounded in exactly those numbers — this is the whole point, so be specific to THIS account, not generic.
+
+Structure your reply:
+- **Where you are** — one or two sentences reading their account honestly (combat level, standout and lagging stats, rough game stage).
+- **Do these next** — the 3–5 highest-impact goals, ordered. For each: what it is, why it matters for an iron specifically, and concretely how to get there from their current levels (the method/monster/boss and the levels or quest gating it). Prefer things that unlock other things (e.g. a slayer level that unlocks a best-in-slot, a quest that opens a boss).
+- **On the horizon** — 2–3 bigger targets to build toward, with the key requirement each needs.
+- **Grind for today** — one concrete thing to do in the next session that moves the plan forward.
+
+Rules:
+- Ground every claim in their actual stats and the milestone status provided. If they're already past a milestone, don't tell them to get it.
+- Respect ironman constraints: self-sufficiency, supply chains (Herblore/Farming/Prayer), and that gear comes from bosses/slayer/quests, not the GE.
+- Requirement numbers can drift slightly — if unsure of an exact level/rate, say it's approximate rather than inventing precision.
+- Stay in character (warm, a little cheeky) but keep the coaching precise and actionable. Use markdown: bold for items/skills/levels, short ordered or bulleted lists. This is a coach's readout, not a wiki page.`;
+
+app.post("/api/ironman/plan", async (req, res) => {
+  if (rateLimited(req.ip)) {
+    return res.status(429).json({
+      error: "Easy there, adventurer — the old man needs a breather. Try again in a few minutes.",
+    });
+  }
+  const summary = typeof req.body?.summary === "string" ? req.body.summary : "";
+  if (!summary.trim()) {
+    return res.status(400).json({ error: "No account summary was provided to plan from." });
+  }
+  if (summary.length > MAX_INPUT_CHARS) {
+    return res.status(413).json({ error: "That account summary is too large." });
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+  if (typeof res.flushHeaders === "function") res.flushHeaders();
+  const send = (event) => res.write(`data: ${JSON.stringify(event)}\n\n`);
+
+  try {
+    const stream = client.messages.stream({
+      model: MODEL,
+      max_tokens: 2600,
+      system: [{ type: "text", text: IRONMAN_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: summary }],
+    });
+    stream.on("text", (delta) => send({ type: "text", text: delta }));
+    const message = await stream.finalMessage();
+
+    if (LOG_USAGE && message.usage) {
+      const u = message.usage;
+      console.log(
+        `[ironman] in=${u.input_tokens} out=${u.output_tokens} ` +
+          `cache_read=${u.cache_read_input_tokens ?? 0} stop=${message.stop_reason}`
+      );
+    }
+    if (message.stop_reason === "refusal") {
+      send({ type: "error", error: "The Wise Old Man declines to answer that one, adventurer." });
+    } else {
+      send({ type: "done" });
+    }
+  } catch (err) {
+    const friendly =
+      err instanceof Anthropic.AuthenticationError ||
+      /authentication|api.?key/i.test(err.message || "")
+        ? "No valid ANTHROPIC_API_KEY is configured on the server — see the README."
+        : err instanceof Anthropic.RateLimitError
+          ? "The scrying pool is overworked (rate limited). Give it a moment and try again."
+          : err.message || "Something went wrong building your plan.";
     send({ type: "error", error: friendly });
   }
   res.end();

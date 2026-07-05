@@ -540,16 +540,15 @@ async function sendMessage(text) {
   }
 }
 
-// Public hooks for the PvM coach (coach.js).
+// Public hooks for feature modules (coach.js, ironman.js).
 window.WOM = {
   get busy() { return busy; },
   openDrawer,
   setBusy,
   setCore,
-  statusText,
-  // Send captured frames for analysis; render advice into the drawer and
-  // fold a short text note into the conversation so follow-ups have context.
-  async analyseFrames(frames, note) {
+  // POST `body` to `url`, render the streamed reply into the drawer, and fold
+  // a short text note into the conversation so text follow-ups have context.
+  async stream(url, body, note, errorFallback) {
     if (busy) return;
     openDrawer();
     addUserMessage(note);
@@ -557,17 +556,25 @@ window.WOM = {
     trimHistory();
     setBusy(true);
     try {
-      const res = await fetch("/api/analyse", {
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ frames, note }),
+        body: JSON.stringify(body),
       });
       await consumeStream(res);
     } catch (err) {
-      addErrorLine(err.message || "The old man couldn't make out your screen, adventurer.");
+      addErrorLine(err.message || errorFallback || "The link to the old man's study was lost.");
     } finally {
       setBusy(false);
     }
+  },
+  analyseFrames(frames, note, mode) {
+    return this.stream(
+      "/api/analyse",
+      { frames, note, mode },
+      note,
+      "The old man couldn't make out your screen, adventurer."
+    );
   },
 };
 

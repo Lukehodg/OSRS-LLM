@@ -37,11 +37,17 @@
   <!-- Constellation labels are placed here by app.js -->
   <div id="labels" class="labels"></div>
 
-  <!-- PvM Coach launcher -->
-  <button id="coach-open" class="coach-launch" type="button" title="Let the old man watch your gameplay">
-    <span class="coach-launch-icon" aria-hidden="true">🎥</span>
-    <span>PvM&nbsp;Coach</span>
-  </button>
+  <!-- Feature launchers -->
+  <div class="launchers">
+    <button id="coach-open" class="launch" type="button" title="Let the old man watch your gameplay">
+      <span class="launch-icon" aria-hidden="true">🎥</span>
+      <span>PvM&nbsp;Coach</span>
+    </button>
+    <button id="iron-open" class="launch" type="button" title="Personalised ironman progression from your live hiscores">
+      <span class="launch-icon" aria-hidden="true">⚔️</span>
+      <span>Ironman&nbsp;Path</span>
+    </button>
+  </div>
 
   <!-- PvM Coach panel -->
   <div id="coach" class="coach" hidden role="dialog" aria-modal="true" aria-label="PvM Coach">
@@ -69,11 +75,53 @@
       <div class="coach-actions">
         <button id="coach-share" class="coach-btn" type="button">Share game window</button>
         <button id="coach-analyse" class="coach-btn primary" type="button" disabled>Analyse my last few seconds</button>
+        <button id="coach-grade" class="coach-btn" type="button" disabled>Grade my trip</button>
         <button id="coach-stop" class="coach-btn ghost" type="button" hidden>Stop watching</button>
       </div>
 
       <p class="coach-privacy">Frames are sent to the old man only when you press <em>Analyse</em>.
       Nothing is recorded or stored — and screen sharing needs a secure (https) connection.</p>
+    </div>
+  </div>
+
+  <!-- Ironman Path overlay -->
+  <div id="iron" class="iron" hidden role="dialog" aria-modal="true" aria-label="Ironman Path">
+    <div class="iron-backdrop" data-iron-dismiss></div>
+    <div class="iron-card">
+      <button id="iron-close" class="iron-x" title="Close" aria-label="Close" data-iron-dismiss>✕</button>
+      <div class="iron-head">
+        <div>
+          <div class="iron-title">IRONMAN&nbsp;PATH</div>
+          <p class="iron-sub">Your progression, read from your live hiscores — not a one-size chart.</p>
+        </div>
+      </div>
+
+      <form id="iron-form" class="iron-load" autocomplete="off">
+        <input id="iron-rsn" class="iron-rsn" type="text" maxlength="12" spellcheck="false"
+               placeholder="Your RuneScape name" aria-label="RuneScape name" />
+        <button id="iron-load" class="iron-btn primary" type="submit">Load account</button>
+      </form>
+      <div id="iron-status" class="iron-status" hidden></div>
+
+      <!-- Account summary + board, filled in after load -->
+      <div id="iron-account" class="iron-account" hidden>
+        <div class="iron-stats" id="iron-stats"></div>
+
+        <div class="iron-legend">
+          <span class="lg lg-done">◆ obtained</span>
+          <span class="lg lg-ready">◆ ready now</span>
+          <span class="lg lg-locked">◆ locked</span>
+          <span class="iron-hint">tap a node to toggle “obtained” — saved on this device</span>
+        </div>
+
+        <div id="iron-board" class="iron-board"></div>
+
+        <div class="iron-plan-row">
+          <input id="iron-focus" class="iron-focus" type="text" maxlength="120" spellcheck="false"
+                 placeholder="Anything specific? (optional — e.g. “I want to start bossing”)" />
+          <button id="iron-plan" class="iron-btn primary" type="button">Get my personalised plan</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -116,5 +164,6 @@
 
   <script src="app.js"></script>
   <script src="coach.js"></script>
+  <script src="ironman.js"></script>
 </body>
 </html>

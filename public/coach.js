@@ -17,6 +17,7 @@
   const noteEl = document.getElementById("coach-note");
   const shareBtn = document.getElementById("coach-share");
   const analyseBtn = document.getElementById("coach-analyse");
+  const gradeBtn = document.getElementById("coach-grade");
   const stopBtn = document.getElementById("coach-stop");
 
   const canvas = document.createElement("canvas");
@@ -123,7 +124,9 @@
   }
 
   function refreshAnalyseState() {
-    analyseBtn.disabled = !stream || frames.length < 2 || (window.WOM && window.WOM.busy);
+    const disabled = !stream || frames.length < 2 || (window.WOM && window.WOM.busy);
+    analyseBtn.disabled = disabled;
+    gradeBtn.disabled = disabled;
   }
 
   // Keep the analyse button in sync with the sage being busy.
@@ -132,22 +135,24 @@
   // -------------------------------------------------------------------------
   // Analyse
   // -------------------------------------------------------------------------
-  async function analyse() {
+  async function analyse(mode) {
     if (!window.WOM || window.WOM.busy || frames.length < 2) return;
     const batch = frames.slice(-MAX_FRAMES);
     const note = noteEl.value.trim();
+    const verb = mode === "grade" ? "Grade my trip" : "Analyse my gameplay";
     const label = note
-      ? `🎥 Analyse my gameplay — ${note}`
-      : `🎥 Analyse my gameplay (${batch.length} frames)`;
+      ? `🎥 ${verb} — ${note}`
+      : `🎥 ${verb} (${batch.length} frames)`;
 
     closePanel();
-    await window.WOM.analyseFrames(batch, label);
+    await window.WOM.analyseFrames(batch, label, mode);
     // Sharing keeps running so they can capture another clip and analyse again.
   }
 
   shareBtn.addEventListener("click", startShare);
   stopBtn.addEventListener("click", stopShare);
-  analyseBtn.addEventListener("click", analyse);
+  analyseBtn.addEventListener("click", () => analyse("coach"));
+  gradeBtn.addEventListener("click", () => analyse("grade"));
 
   window.addEventListener("beforeunload", () => {
     if (stream) stream.getTracks().forEach((t) => t.stop());
