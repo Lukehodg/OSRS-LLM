@@ -556,14 +556,24 @@ async function sendMessage(text) {
   }
 }
 
-// Public hooks for feature modules (coach.js, ironman.js).
+// Public hooks for feature modules (coach.js, ironman.js, pickers.js).
 window.WOM = {
   get busy() { return busy; },
   openDrawer,
   setBusy,
   setCore,
-  // Send a plain chat message (used by the skills picker).
+  // Send a plain chat message (used by the pickers).
   ask(text) { return sendMessage(text); },
+  // Shared account context: set when Ironman Path loads a player, restored
+  // from localStorage on boot. Pickers use it to personalise tiles/prompts.
+  account: null,
+  setAccount(acc) {
+    this.account = acc && acc.skills ? acc : null;
+    try {
+      if (this.account) localStorage.setItem("wom.account", JSON.stringify(this.account));
+      else localStorage.removeItem("wom.account");
+    } catch {}
+  },
   // POST `body` to `url`, render the streamed reply into the drawer, and fold
   // a short text note into the conversation so text follow-ups have context.
   async stream(url, body, note, errorFallback) {
@@ -627,5 +637,11 @@ generateChart();
 layout();
 window.addEventListener("resize", layout);
 if (!reducedMotion) requestAnimationFrame(loop);
+
+// Restore the last-loaded account so pickers stay personalised across visits.
+try {
+  const saved = JSON.parse(localStorage.getItem("wom.account"));
+  if (saved && saved.skills) window.WOM.account = saved;
+} catch {}
 
 input.focus();

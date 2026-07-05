@@ -64,6 +64,8 @@ Market data comes from [prices.runescape.wiki](https://prices.runescape.wiki) (`
 
 Three constellations open an in-UI picker instead of firing a canned question: **Skilling** → all 23 skills (training guides), **Combat** → 18 iconic bosses (strategy, gear, requirements), **Quests** → 12 high-impact quests (requirements, walkthrough, rewards). Each tile uses its real OSRS Wiki icon (with emoji fallback); selecting one asks the sage about it. All three are driven by one config in `public/pickers.js` — adding another picker is just a new entry.
 
+**Account-aware:** once you've loaded your RSN in Ironman Path, the pickers personalise — the skill picker shows your live level on every tile (gold ✦ at 99), the boss picker badges each boss **✓ ready** or shows your exact gap against recommended stats (e.g. *Kraken · Slayer 78/87*), and every picked question carries your levels so the sage tailors its answer to your account. The account is remembered on your device across visits.
+
 ---
 
 Each milestone shows its real **OSRS Wiki item sprite** (loaded via the wiki's `Special:FilePath`), with an emoji fallback if an image can't load — so the board always renders cleanly. The milestone dataset lives in `public/ironman-data.json` (easy to extend; each entry's `img` is the wiki file name). Hiscores lookups use a separate, generous rate limit (`HISCORES_LIMIT_PER_10_MIN`) since they don't cost anything; only the AI plan draws on the model budget.

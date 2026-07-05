@@ -117,6 +117,10 @@
     }
 
     loadAcquired(rsn);
+    // Share the account with the rest of the app (skill/boss pickers).
+    if (window.WOM && window.WOM.setAccount) {
+      window.WOM.setAccount({ player: rsn, skills: stats.skills });
+    }
     await loadData();
     statusEl.hidden = true;
     loadBtn.disabled = false;
