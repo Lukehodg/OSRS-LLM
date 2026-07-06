@@ -103,7 +103,7 @@
       </div>
       ${clan.description ? `<div class="clan-desc">${esc(clan.description)}</div>` : ""}
       ${live.length
-        ? live.map((ev) => eventCard(ev, clan, manage)).join("")
+        ? live.slice().reverse().map((ev) => eventCard(ev, clan, manage)).join("")
         : `<div class="clans-note">no active events</div>`}
     </div>`;
   }
@@ -184,7 +184,7 @@
           <button class="clans-btn primary" type="submit">Create</button>
         </form>
         <div class="clans-status" data-status="${clan.id}"></div>
-        ${(clan.events || []).map((ev) => eventCard(ev, clan, true)).join("") || `<div class="clans-note">no events yet</div>`}
+        ${(clan.events || []).slice().reverse().map((ev) => eventCard(ev, clan, true)).join("") || `<div class="clans-note">no events yet</div>`}
       </div>`).join("");
 
     // per-form behaviour
@@ -205,8 +205,11 @@
         e.preventDefault();
         const clanId = form.dataset.clan;
         const status = panes.manage.querySelector(`[data-status="${clanId}"]`);
+        const btn = form.querySelector("button[type=submit]");
+        const isBingo = typeSel.value === "bingo";
+        btn.disabled = true; // AI boards can take ~15s — no double-submits
         status.className = "clans-status";
-        status.textContent = typeSel.value === "bingo" ? "conjuring a board…" : "creating…";
+        status.textContent = isBingo ? "conjuring a board… (up to ~20s)" : "creating…";
         try {
           const r = await fetch(`/api/clans/${clanId}/events`, {
             method: "POST",
@@ -221,11 +224,22 @@
           });
           const body = await r.json();
           if (!r.ok) throw new Error(body.error || "failed");
-          status.className = "clans-status ok";
-          status.textContent = "event created.";
           await loadClans();
+          if (isBingo && body.event && body.event.board && window.openBingo) {
+            // Take them straight to their new board — the clearest "it worked".
+            close();
+            window.openBingo(clanId, body.event.id);
+            return;
+          }
           renderManage();
+          // renderManage rebuilt the pane — write the confirmation into the new DOM.
+          const fresh = panes.manage.querySelector(`[data-status="${clanId}"]`);
+          if (fresh) {
+            fresh.className = "clans-status ok";
+            fresh.textContent = "event created — it's listed just below.";
+          }
         } catch (err) {
+          btn.disabled = false;
           status.className = "clans-status err";
           status.textContent = err.message;
         }
@@ -248,10 +262,13 @@
           });
           const body = await r.json();
           if (!r.ok) throw new Error(body.error || "failed");
-          status.className = "clans-status ok";
-          status.textContent = body.hasWebhook ? "webhook saved — announcements on." : "webhook removed.";
           await loadClans();
           renderManage();
+          const fresh = panes.manage.querySelector(`[data-status="${clanId}"]`);
+          if (fresh) {
+            fresh.className = "clans-status ok";
+            fresh.textContent = body.hasWebhook ? "webhook saved — announcements on." : "webhook removed.";
+          }
         } catch (err) {
           status.className = "clans-status err";
           status.textContent = err.message;

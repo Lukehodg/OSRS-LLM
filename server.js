@@ -1615,6 +1615,23 @@ app.get("/healthz", (_req, res) => {
   res.json({ ok: true, model: MODEL, apiKey: Boolean(process.env.ANTHROPIC_API_KEY) });
 });
 
+// The JSON stores are saved on a 250ms debounce — flush them on shutdown so
+// a clan registered moments before Ctrl+C (or a platform restart) survives.
+function flushStoresAndExit() {
+  try {
+    clearTimeout(saveTimer);
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(CLANS_FILE, JSON.stringify(clans, null, 2));
+  } catch {}
+  try {
+    clearTimeout(alertSaveTimer);
+    fs.writeFileSync(ALERTS_FILE, JSON.stringify(alertStore));
+  } catch {}
+  process.exit(0);
+}
+process.on("SIGINT", flushStoresAndExit);
+process.on("SIGTERM", flushStoresAndExit);
+
 app.listen(PORT, () => {
   console.log(`RuneScribe is listening on http://localhost:${PORT}`);
   console.log(`Model: ${MODEL}`);
