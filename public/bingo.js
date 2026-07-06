@@ -26,10 +26,14 @@
   let clanId = null, eventId = null, clan = null, ev = null;
   let selected = null, filter = "all";
   let clockTimer = null, pollTimer = null;
+  let drawnLines = new Set(); // constellations already drawn (skip re-animation)
+  let boardRevealed = false;  // stagger the tile reveal only on open
 
   // ---- open / close --------------------------------------------------------
   window.openBingo = async function (cid, eid) {
     clanId = cid; eventId = eid; selected = null; filter = "all";
+    drawnLines = new Set();
+    boardRevealed = false;
     setFilterUI();
     root.hidden = false;
     boardEl.innerHTML = `<div class="bhq-loading">unrolling the board…</div>`;
@@ -186,26 +190,36 @@
     const linesDone = LINES.filter((l) => l.cells.every(isDone)).length;
     const pc = Math.round((doneCount / 25) * 100);
     statsEl.innerHTML = `
-      <div class="bhq-stat"><span class="bhq-stat-v">${pts.toLocaleString()}</span><span class="bhq-stat-k">points · of ${maxPts.toLocaleString()}</span></div>
-      <div class="bhq-stat wide">
-        <span class="bhq-stat-v">${doneCount} / 25 <small>${pc}%</small></span>
-        <span class="bhq-stat-k">tiles completed</span>
-        <span class="bhq-bar"><span class="bhq-bar-fill"></span></span>
+      <div class="bhq-read">
+        <span class="bhq-read-v">${pts.toLocaleString()}</span>
+        <span class="bhq-read-k">points · of ${maxPts.toLocaleString()}</span>
       </div>
-      <div class="bhq-stat"><span class="bhq-stat-v">${verified}</span><span class="bhq-stat-k">verified</span></div>
-      <div class="bhq-stat"><span class="bhq-stat-v">${linesDone} / ${LINES.length}</span><span class="bhq-stat-k">bingo lines</span></div>`;
+      <div class="bhq-read grow">
+        <span class="bhq-track"><span class="bhq-track-fill"></span></span>
+        <span class="bhq-read-k">${doneCount} of 25 tiles charted · ${pc}%</span>
+      </div>
+      <div class="bhq-read">
+        <span class="bhq-read-v">${verified}</span>
+        <span class="bhq-read-k">verified</span>
+      </div>
+      <div class="bhq-read">
+        <span class="bhq-read-v">${linesDone}<small>/${LINES.length}</small></span>
+        <span class="bhq-read-k">constellations</span>
+      </div>`;
     // Width via CSSOM — the CSP (rightly) blocks inline style attributes.
-    statsEl.querySelector(".bhq-bar-fill").style.width = `${pc}%`;
+    statsEl.querySelector(".bhq-track-fill").style.width = `${pc}%`;
   }
 
   function renderBoard() {
     boardEl.innerHTML = "";
+    const reveal = !boardRevealed;
     for (let i = 0; i < 25; i++) {
       const cell = cellOf(i);
       const st = statusOf(i);
       const el = document.createElement("button");
       el.type = "button";
-      el.className = `bhq-tile ${st}${selected === i ? " selected" : ""}${matchesFilter(i) ? "" : " dimmed"}`;
+      el.className = `bhq-tile ${st}${selected === i ? " selected" : ""}${matchesFilter(i) ? "" : " dimmed"}${reveal ? " in" : ""}`;
+      if (reveal) el.style.animationDelay = `${i * 22}ms`;
       el.title = cell.name;
 
       const icon = document.createElement("span");
@@ -244,7 +258,51 @@
       el.addEventListener("click", () => { selected = selected === i ? null : i; renderBoard(); renderDetail(); });
       boardEl.appendChild(el);
     }
+    boardRevealed = true;
+    // Chart the sky once tiles have laid out (staggered reveal delays the
+    // first paint, so give the constellation pass a beat).
+    if (reveal) setTimeout(drawSky, 25 * 22 + 250);
+    else requestAnimationFrame(drawSky);
   }
+
+  // ---- the sky: completed bingo lines drawn as constellations ------------
+  // Each finished line becomes a star-line joining its five tiles; the four
+  // corners close into a diamond. Blackout is the whole sky, so no line.
+  function drawSky() {
+    const svg = document.getElementById("bhq-sky");
+    if (!svg || !ev || root.hidden) return;
+    const stage = svg.parentElement;
+    const W = stage.clientWidth, H = stage.clientHeight;
+    if (!W || !H) return;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    const tiles = boardEl.querySelectorAll(".bhq-tile");
+    if (tiles.length !== 25) { svg.innerHTML = ""; return; }
+    const sr = stage.getBoundingClientRect();
+    const centers = [...tiles].map((t) => {
+      const r = t.getBoundingClientRect();
+      return { x: r.left - sr.left + r.width / 2, y: r.top - sr.top + r.height / 2 };
+    });
+    let html = "";
+    for (const l of LINES) {
+      if (l.cells.length > 5 || !l.cells.every(isDone)) continue;
+      const pts = l.cells.map((i) => centers[i]);
+      const d = pts.map((p, n) => `${n ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ") +
+        (l.name === "Four corners" ? " Z" : "");
+      const fresh = !drawnLines.has(l.name);
+      drawnLines.add(l.name);
+      html += `<path d="${d}" pathLength="1" class="bhq-sky-line${fresh ? " fresh" : ""}"/>`;
+      for (const p of pts) {
+        html += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.4" class="bhq-sky-star${fresh ? " fresh" : ""}"/>`;
+      }
+    }
+    svg.innerHTML = html;
+  }
+  let skyResizeTimer = null;
+  window.addEventListener("resize", () => {
+    if (root.hidden) return;
+    clearTimeout(skyResizeTimer);
+    skyResizeTimer = setTimeout(drawSky, 150);
+  });
 
   function renderDetail() {
     if (selected == null) {
