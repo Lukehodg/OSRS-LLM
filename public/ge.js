@@ -38,16 +38,25 @@
   const isWatched = (id) => watch.some((w) => w.id === id);
 
   // ---- formatting ----
-  function fmt(n) {
-    if (n == null) return "—";
+  // Coerce to a finite number so upstream data can never inject strings
+  // through the formatters into HTML.
+  function fmt(v) {
+    const n = Number(v);
+    if (v == null || !Number.isFinite(n)) return "—";
     const a = Math.abs(n);
     if (a >= 1e9) return (n / 1e9).toFixed(2) + "b";
     if (a >= 1e6) return (n / 1e6).toFixed(2) + "m";
     if (a >= 1e4) return (n / 1e3).toFixed(1) + "k";
     return n.toLocaleString("en-GB");
   }
-  const gp = (n) => (n == null ? "—" : n.toLocaleString("en-GB"));
-  const pct = (n) => (n == null ? "—" : (n * 100).toFixed(1) + "%");
+  const gp = (v) => {
+    const n = Number(v);
+    return v == null || !Number.isFinite(n) ? "—" : n.toLocaleString("en-GB");
+  };
+  const pct = (v) => {
+    const n = Number(v);
+    return v == null || !Number.isFinite(n) ? "—" : (n * 100).toFixed(1) + "%";
+  };
 
   // ---- open / close ----
   function open() {

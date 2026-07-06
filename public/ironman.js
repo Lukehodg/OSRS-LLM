@@ -70,7 +70,10 @@
   // -------------------------------------------------------------------------
   // Status logic
   // -------------------------------------------------------------------------
-  const lvl = (skill) => (stats && stats.skills[skill] ? stats.skills[skill].level : 1);
+  const lvl = (skill) => {
+    const v = Number(stats && stats.skills[skill] ? stats.skills[skill].level : 1);
+    return Number.isFinite(v) ? v : 1;
+  };
 
   // Returns { status: 'done'|'ready'|'locked', gaps: [{skill, need, have}] }
   function evaluate(item) {

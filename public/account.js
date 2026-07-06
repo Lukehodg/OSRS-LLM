@@ -100,7 +100,10 @@
     if (!a) return;
     const combatSkills = ["Attack", "Strength", "Defence", "Hitpoints", "Ranged", "Magic", "Prayer", "Slayer"];
     const chips = a.skills
-      ? combatSkills.map((s) => `<span class="acct-chip">${s.slice(0, 4)} <b>${a.skills[s]?.level ?? "—"}</b></span>`).join("")
+      ? combatSkills.map((s) => {
+          const v = Number(a.skills[s]?.level);
+          return `<span class="acct-chip">${s.slice(0, 4)} <b>${Number.isFinite(v) ? v : "—"}</b></span>`;
+        }).join("")
       : "";
     const questLine = a.quests
       ? `<div class="acct-line">📜 Quests: <b>${a.quests.complete}/${a.quests.total}</b> complete` +

@@ -9,9 +9,35 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
 
 const app = express();
-// Large enough for a burst of PvM-coach frames; per-endpoint caps
-// (MAX_INPUT_CHARS, MAX_FRAMES, MAX_FRAME_BYTES) do the real bounding.
-app.use(express.json({ limit: "8mb" }));
+
+// Security headers. The CSP allows exactly what the app uses: same-origin
+// scripts/requests, Google Fonts, and OSRS Wiki images.
+app.use((_req, res, next) => {
+  res.set({
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Content-Security-Policy": [
+      "default-src 'self'",
+      "script-src 'self'",
+      "style-src 'self' https://fonts.googleapis.com",
+      "font-src https://fonts.gstatic.com",
+      "img-src 'self' data: https://oldschool.runescape.wiki",
+      "connect-src 'self'",
+      "frame-ancestors 'none'",
+    ].join("; "),
+  });
+  next();
+});
+
+// Body parsing: only the PvM-coach frames endpoint needs a large body;
+// everything else gets a tight limit (per-field caps do the fine bounding).
+const smallJson = express.json({ limit: "256kb" });
+const largeJson = express.json({ limit: "8mb" });
+app.use((req, res, next) =>
+  req.path === "/api/analyse" ? largeJson(req, res, next) : smallJson(req, res, next)
+);
 
 // Serve index.html dynamically so social-preview tags carry an absolute URL
 // (Twitter/Facebook scrapers require it). Everything else is static.
@@ -1068,21 +1094,33 @@ app.get("/api/clans/:id", (req, res) => {
   res.json({ clan: publicClan(clan) });
 });
 
+function tokenMatches(given, actual) {
+  const a = Buffer.from(String(given));
+  const b = Buffer.from(String(actual));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 function authClan(req, res) {
   const clan = clans.find((c) => c.id === req.params.id);
   if (!clan) { res.status(404).json({ error: "No such clan." }); return null; }
   const token = req.get("x-clan-token") || "";
-  if (token !== clan.token) { res.status(403).json({ error: "Wrong clan key — only the clan's registrant can manage events." }); return null; }
+  if (!tokenMatches(token, clan.token)) {
+    res.status(403).json({ error: "Wrong clan key — only the clan's registrant can manage events." });
+    return null;
+  }
   return clan;
 }
 
 // Create an event (requires the clan key from registration).
 app.post("/api/clans/:id/events", async (req, res) => {
-  if (hiscoresLimited(req.ip)) return res.status(429).json({ error: "Slow down a touch." });
+  const type = ["botw", "sotw", "bingo"].includes(req.body?.type) ? req.body.type : null;
+  // Bingo may trigger a PAID model call (AI board) — draw from the tight
+  // model budget, not the generous free-lookup bucket.
+  const limited = type === "bingo" ? rateLimited(req.ip) : hiscoresLimited(req.ip);
+  if (limited) return res.status(429).json({ error: "Slow down a touch — try again in a few minutes." });
   const clan = authClan(req, res);
   if (!clan) return;
 
-  const type = ["botw", "sotw", "bingo"].includes(req.body?.type) ? req.body.type : null;
   if (!type) return res.status(400).json({ error: "Event type must be botw, sotw or bingo." });
   const target = clean(req.body?.target, 60);      // boss or skill name
   const theme = clean(req.body?.theme, 160);       // bingo theme (optional)
