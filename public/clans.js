@@ -27,6 +27,10 @@
     sotw: { icon: "📈", label: "Skill of the Week" },
     bingo: { icon: "🎲", label: "Bingo" },
   };
+  const STYLE_LABEL = {
+    mixed: "mixed", "pvm-high": "🔥 high-level PvM",
+    "pvm-mid": "⚔️ mid-level PvM", "pvm-low": "🛡️ low-level PvM",
+  };
 
   // ---- open/close + tabs ----
   function open() { panel.hidden = false; setTab("browse"); loadClans(); }
@@ -77,7 +81,7 @@
       body = `<div class="bingo-mini-row">
         <div class="bingo-mini">${cells}</div>
         <div class="bingo-mini-info">
-          <div class="bingo-mini-count"><b>${done}</b>/25 tiles</div>
+          <div class="bingo-mini-count"><b>${done}</b>/25 tiles${ev.style && ev.style !== "mixed" ? ` · ${STYLE_LABEL[ev.style] || esc(ev.style)}` : ""}</div>
           ${ev.aiBoard ? `<div class="clans-note">✦ conjured by the sage</div>` : ""}
           <button class="clans-btn primary" data-bingo="${clan.id}:${ev.id}" type="button">Open board ⌁</button>
         </div>
@@ -176,6 +180,12 @@
             <option value="bingo">🎲 Bingo (board is generated)</option>
           </select>
           <input name="target" type="text" maxlength="60" placeholder="boss / skill name" />
+          <select name="style" hidden>
+            <option value="mixed">🎲 Mixed board — a bit of everything</option>
+            <option value="pvm-high">🔥 PvM — high level (raids, Inferno, DT2)</option>
+            <option value="pvm-mid">⚔️ PvM — mid level (Barrows, Zulrah, GWD)</option>
+            <option value="pvm-low">🛡️ PvM — low level (Obor, Mole, KBD)</option>
+          </select>
           <input name="theme" type="text" maxlength="160" placeholder="bingo theme (optional)" hidden />
           <input name="teams" type="text" maxlength="200" placeholder="teams — e.g. Bandos, Zamorak (optional)" hidden />
           <select name="days">
@@ -193,9 +203,11 @@
       const target = form.querySelector("[name=target]");
       const theme = form.querySelector("[name=theme]");
       const teams = form.querySelector("[name=teams]");
+      const style = form.querySelector("[name=style]");
       const sync = () => {
         const bingo = typeSel.value === "bingo";
         target.hidden = bingo;
+        style.hidden = !bingo;
         theme.hidden = !bingo;
         teams.hidden = !bingo;
       };
@@ -217,6 +229,7 @@
             body: JSON.stringify({
               type: typeSel.value,
               target: target.value,
+              style: style.value,
               theme: theme.value,
               teams: teams.value,
               days: form.querySelector("[name=days]").value,

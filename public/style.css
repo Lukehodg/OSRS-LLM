@@ -1518,6 +1518,7 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
 }
 .bhq-filter:hover { color: var(--gold); }
 .bhq-filter.active { color: var(--gold-bright); border-bottom-color: var(--gold); }
+.bhq-filter b { font-weight: 400; color: var(--gold); margin-left: 2px; }
 .bhq-filter:focus-visible { outline: 1px solid var(--gold-bright); outline-offset: 3px; }
 .bhq-x {
   background: none; border: none; align-self: center;
@@ -1608,6 +1609,41 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
 .bhq-sky-star.fresh { animation: starIn 0.5s ease-out 0.3s backwards; }
 @keyframes starIn { from { opacity: 0; transform: scale(0.2); } }
 
+/* Celebrations: claim bursts + the BINGO banner */
+.bhq-spark {
+  position: absolute; z-index: 6; pointer-events: none;
+  font-size: 13px; line-height: 1;
+  text-shadow: 0 0 8px currentColor;
+  animation: sparkFly 0.95s ease-out forwards;
+}
+@keyframes sparkFly {
+  20% { opacity: 1; }
+  to { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; }
+}
+.bhq-banner {
+  position: absolute; left: 50%; top: 42%; z-index: 7;
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  pointer-events: none; text-align: center;
+  animation: bannerPop 2.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.bhq-banner-word {
+  font-family: var(--font-caps); font-size: 52px; font-weight: 700;
+  letter-spacing: 10px; color: var(--gold-bright);
+  text-shadow: 0 0 30px rgba(242, 223, 159, 0.65), 0 4px 18px rgba(0, 0, 0, 0.8);
+}
+.bhq-banner-line {
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 2.5px;
+  text-transform: uppercase; color: var(--gold);
+}
+@keyframes bannerPop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  12% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
+  20% { transform: translate(-50%, -50%) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -54%) scale(1.02); }
+}
+
 .bhq-board {
   flex: 1; min-height: 0;
   display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(5, 1fr);
@@ -1634,10 +1670,14 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
 .bhq-tile.in { animation: tileIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
 @keyframes tileIn { from { opacity: 0; transform: translateY(7px) scale(0.96); } }
 .bhq-tile:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px) scale(1.025) rotate(-0.5deg);
   border-color: rgba(217, 192, 122, 0.32);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+  z-index: 2;
 }
+.bhq-tile:nth-child(even):hover { transform: translateY(-3px) scale(1.025) rotate(0.5deg); }
+.bhq-tile .bhq-tile-icon { transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.bhq-tile:hover .bhq-tile-icon { transform: scale(1.22) rotate(-5deg); }
 .bhq-tile:focus-visible { outline: 1px solid var(--gold-bright); outline-offset: 3px; }
 .bhq-tile.selected {
   border-color: var(--gold-bright);
@@ -1677,11 +1717,24 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
   font-size: 12.5px; line-height: 1.28; color: var(--text);
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
 }
+/* Points wear drop-rarity colours — the board reads like a loot table */
 .bhq-tile-pts {
-  font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 1.4px;
+  font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 1.2px;
   text-transform: uppercase;
-  color: rgba(217, 192, 122, 0.75);
+  padding: 2px 8px; border-radius: 999px; border: 1px solid;
 }
+.bhq-tile-pts.p-common    { color: #cfc6ad; border-color: rgba(207, 198, 173, 0.3);  background: rgba(207, 198, 173, 0.07); }
+.bhq-tile-pts.p-uncommon  { color: #8ade7f; border-color: rgba(138, 222, 127, 0.35); background: rgba(138, 222, 127, 0.08); }
+.bhq-tile-pts.p-rare      { color: #74b9f0; border-color: rgba(116, 185, 240, 0.35); background: rgba(116, 185, 240, 0.08); }
+.bhq-tile-pts.p-epic      { color: #c793f2; border-color: rgba(199, 147, 242, 0.35); background: rgba(199, 147, 242, 0.09); }
+.bhq-tile-pts.p-legendary {
+  color: #ffab52; border-color: rgba(255, 171, 82, 0.4); background: rgba(255, 171, 82, 0.1);
+  text-shadow: 0 0 8px rgba(255, 171, 82, 0.45);
+}
+.bhq-tile.t-legendary { border-color: rgba(255, 171, 82, 0.22); }
+.bhq-tile.t-legendary:hover { border-color: rgba(255, 171, 82, 0.5); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5), 0 0 22px rgba(255, 171, 82, 0.12); }
+.bhq-tile.t-epic:hover { border-color: rgba(199, 147, 242, 0.45); }
+.bhq-tile.t-rare:hover { border-color: rgba(116, 185, 240, 0.45); }
 .bhq-tile-badge {
   position: absolute; top: 7px; right: 9px;
   font-size: 11px; color: #9fd89f;
@@ -1815,7 +1868,7 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
 .event-form { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
 .event-form select { flex: 0 0 auto; }
 .event-form input { flex: 1; min-width: 140px; }
-.event-form input[hidden] { display: none; }
+.event-form input[hidden], .event-form select[hidden] { display: none; }
 
 /* Link Account */
 .acct-load { display: flex; gap: 10px; margin-bottom: 8px; }

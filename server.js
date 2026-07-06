@@ -1021,8 +1021,9 @@ function announce(clan, content) {
 
 const clean = (s, max) => (typeof s === "string" ? s.trim().slice(0, max) : "");
 
-// Task pool for non-AI bingo boards. Each tile carries points and (where an
-// obvious item exists) the OSRS Wiki file name of its sprite.
+// Task pools for non-AI bingo boards. Each tile carries points and (where an
+// obvious item exists) the OSRS Wiki file name of its sprite. The creator
+// picks a board style: a mixed board, or PvM pitched at high/mid/low level.
 const BINGO_POOL = [
   { name: "Get a Barrows unique", pts: 300, img: "Dharok's helm" },
   { name: "Hit a 40+ with any weapon", pts: 100, img: "Armadyl godsword" },
@@ -1062,6 +1063,109 @@ const BINGO_POOL = [
   { name: "Do 10 farming contracts", pts: 200, img: "Seed pack" },
 ];
 
+const PVM_HIGH_POOL = [
+  { name: "Complete the Theatre of Blood", pts: 500, img: "Scythe of vitur" },
+  { name: "Get a CoX purple or 5 completions", pts: 450, img: "Twisted bow" },
+  { name: "Complete a 300+ invocation ToA", pts: 450, img: "Osmumten's fang" },
+  { name: "Kill TzKal-Zuk or reach Inferno wave 50", pts: 600, img: "Infernal cape" },
+  { name: "Get a CG armour seed or 15 KC", pts: 450, img: "Crystal armour seed" },
+  { name: "Complete the Corrupted Gauntlet 5 times", pts: 400, img: "Blade of saeldor" },
+  { name: "Kill Nex with your clan", pts: 400, img: "Nihil horn" },
+  { name: "Get a Nightmare unique or 10 KC", pts: 450, img: "Inquisitor's mace" },
+  { name: "Kill Vorkath 50 times", pts: 300, img: "Vorkath's head" },
+  { name: "Get a Hydra claw or 30 KC", pts: 400, img: "Hydra's claw" },
+  { name: "Get any GWD unique solo", pts: 350, img: "Armadyl chestplate" },
+  { name: "Get a ring drop at Dagannoth Kings", pts: 250, img: "Berserker ring" },
+  { name: "10 KC at Corporeal Beast", pts: 300, img: "Spectral sigil" },
+  { name: "Get a Zulrah unique", pts: 300, img: "Tanzanite fang" },
+  { name: "Get a Muspah unique or 20 KC", pts: 300, img: "Venator shard" },
+  { name: "Kill all four Desert Treasure II bosses", pts: 450, img: "Chromium ingot" },
+  { name: "Get an Araxxor unique or 25 KC", pts: 350, img: "Araxyte fang" },
+  { name: "Get a Cerberus crystal", pts: 350, img: "Primordial crystal" },
+  { name: "Duo the Kalphite Queen 20 times", pts: 250, img: "Kq head" },
+  { name: "Get a visage or draconic drop", pts: 500, img: "Draconic visage" },
+  { name: "Kill a Wilderness boss 25 times", pts: 300, img: "Voidwaker hilt" },
+  { name: "Get a Grotesque Guardians unique", pts: 300, img: "Granite hammer" },
+  { name: "Complete a ToB or CoX with no deaths", pts: 400, img: "Justiciar faceguard" },
+  { name: "Get a Phantom Muspah pet chance (100 KC)", pts: 350, img: "Muphin" },
+];
+
+const PVM_MID_POOL = [
+  { name: "Get a fire cape", pts: 400, img: "Fire cape" },
+  { name: "Get a Barrows unique", pts: 250, img: "Dharok's helm" },
+  { name: "Kill Zulrah 10 times", pts: 250, img: "Zulrah's scales" },
+  { name: "Get an abyssal whip drop", pts: 250, img: "Abyssal whip" },
+  { name: "Get a Kraken unique", pts: 300, img: "Trident of the seas" },
+  { name: "Kill Vorkath 10 times", pts: 250, img: "Vorkath's head" },
+  { name: "Get a dragon warhammer drop", pts: 500, img: "Dragon warhammer" },
+  { name: "Kill each GWD boss once", pts: 300, img: "Godsword shard 1" },
+  { name: "Get dragon boots from Spiritual Mages", pts: 150, img: "Dragon boots" },
+  { name: "Kill the Kalphite Queen 15 times", pts: 300, img: "Kq head" },
+  { name: "Get a Grotesque Guardians kill", pts: 200, img: "Black tourmaline core" },
+  { name: "Get a basilisk jaw or 50 Basilisk Knights", pts: 300, img: "Basilisk jaw" },
+  { name: "Complete 5 Slayer boss tasks", pts: 250, img: "Slayer helmet" },
+  { name: "Kill Scurrius 20 times", pts: 150, img: "Scurrius' spine" },
+  { name: "Get an occult necklace drop", pts: 200, img: "Occult necklace" },
+  { name: "Kill the Giant Mole 25 times", pts: 150, img: "Mole claw" },
+  { name: "Get a curved bone from any monster", pts: 150, img: "Curved bone" },
+  { name: "Kill Sarachnis 25 times", pts: 200, img: "Sarachnis cudgel" },
+  { name: "Get any champion scroll", pts: 300, img: "Champion scroll" },
+  { name: "Kill Obor and Bryophyta in one day", pts: 150, img: "Hill giant club" },
+  { name: "Get a trident or tentacle drop", pts: 300, img: "Kraken tentacle" },
+  { name: "Kill Tempoross until a Big harpoonfish", pts: 200, img: "Big harpoonfish" },
+  { name: "Get a Vet'ion / Calvar'ion kill", pts: 250, img: "Skull of vet'ion" },
+  { name: "Full Void from Pest Control", pts: 300, img: "Void knight top" },
+];
+
+const PVM_LOW_POOL = [
+  { name: "Kill Obor, the Hill Titan", pts: 100, img: "Hill giant club" },
+  { name: "Kill Bryophyta the moss giant", pts: 100, img: "Bryophyta's essence" },
+  { name: "Kill the Giant Mole 5 times", pts: 100, img: "Mole claw" },
+  { name: "Kill the King Black Dragon 5 times", pts: 150, img: "Kbd heads" },
+  { name: "Kill Sarachnis 5 times", pts: 150, img: "Sarachnis cudgel" },
+  { name: "Complete one full Barrows run", pts: 200, img: "Karil's coif" },
+  { name: "Kill Scurrius, the rat king", pts: 100, img: "Scurrius' spine" },
+  { name: "Earn 5 Wintertodt crates", pts: 100, img: "Supply crate" },
+  { name: "Help defeat Tempoross 3 times", pts: 100, img: "Casket" },
+  { name: "Kill 20 hill giants", pts: 50, img: "Big bones" },
+  { name: "Get a rune scimitar from fire giants", pts: 100, img: "Rune scimitar" },
+  { name: "Kill the Deranged Archaeologist", pts: 100, img: "Steel ring" },
+  { name: "Complete a game of Pest Control", pts: 50, img: "Void knight gloves" },
+  { name: "Kill 10 green dragons", pts: 100, img: "Dragon bones" },
+  { name: "Get an ensouled head drop", pts: 50, img: "Ensouled giant head" },
+  { name: "Kill a demi-boss slayer monster", pts: 150, img: "Slayer helmet" },
+  { name: "Get a Barbarian Assault wave 1-5 done", pts: 100, img: "Fighter torso" },
+  { name: "Kill 25 moss giants", pts: 50, img: "Mossy key" },
+  { name: "Defeat the Mimic once", pts: 150, img: "Casket (3rd age)" },
+  { name: "Get any unique from Fortis Colosseum wave 1", pts: 200, img: "Sunfire splinters" },
+  { name: "Kill 15 blue dragons", pts: 100, img: "Blue dragonhide" },
+  { name: "Get a clue scroll from any boss", pts: 100, img: "Clue scroll (easy)" },
+  { name: "Kill 50 TzHaar", pts: 100, img: "Obsidian cape" },
+  { name: "Take a friend on their first boss trip", pts: 150, img: "Games necklace(8)" },
+];
+
+const BINGO_POOLS = {
+  mixed: BINGO_POOL,
+  "pvm-high": PVM_HIGH_POOL,
+  "pvm-mid": PVM_MID_POOL,
+  "pvm-low": PVM_LOW_POOL,
+};
+
+const BINGO_STYLE_LABEL = {
+  mixed: "mixed board",
+  "pvm-high": "high-level PvM",
+  "pvm-mid": "mid-level PvM",
+  "pvm-low": "low-level PvM",
+};
+
+// Extra prompt guidance per board style for AI-generated boards.
+const BINGO_STYLE_GUIDANCE = {
+  mixed: "Mix PvM, skilling, clues and minigames.",
+  "pvm-high": "Every task must be PvM for high-level endgame players: raids (CoX/ToB/ToA), Inferno/Colosseum, Nex, Nightmare, Corrupted Gauntlet, DT2 bosses, high slayer bosses. Points 200-600, weighted by rarity/difficulty.",
+  "pvm-mid": "Every task must be PvM for mid-level accounts (base 70-90s): Barrows, Zulrah, Vorkath, GWD, Kraken, fire cape, slayer bosses, wilderness demi-bosses. No raids-only tasks. Points 150-500.",
+  "pvm-low": "Every task must be PvM achievable by low-level accounts (under base 70s): Obor, Bryophyta, Giant Mole, KBD, Sarachnis, Scurrius, Barrows, Pest Control, easy group bosses. Keep tasks short and beginner-friendly. Points 50-200.",
+};
+
 const FREE_TILE = { name: "FREE", pts: 50, img: null, free: true };
 
 function makeBingoBoard(tasks) {
@@ -1075,8 +1179,8 @@ function makeBingoBoard(tasks) {
   return board;
 }
 
-// AI-generated themed bingo tiles; falls back to the built-in pool.
-async function generateBingoTasks(theme) {
+// AI-generated themed bingo tiles; falls back to the built-in pools.
+async function generateBingoTasks(theme, style) {
   try {
     const msg = await client.messages.create({
       model: MODEL,
@@ -1084,12 +1188,14 @@ async function generateBingoTasks(theme) {
       system:
         "You create Old School RuneScape clan bingo tiles. Reply with EXACTLY 24 lines, one tile per line, " +
         "formatted as: task | points | wiki_image\n" +
-        "- points: an integer 50-500; harder or rarer tasks are worth more.\n" +
+        "- points: an integer 50-600; harder or rarer tasks are worth more.\n" +
         "- wiki_image: the exact OSRS Wiki file name (no .png) of an item icon that represents the task " +
         "(e.g. Abyssal whip, Fire cape, Prayer potion(4)), or - if nothing fits.\n" +
         "No numbering, no commentary. Tasks must be verifiable via screenshot, achievable within a week of " +
-        "casual play, varied across PvM/skilling/clues/minigames, and ironman-friendly (no 'buy X').",
-      messages: [{ role: "user", content: `Create 24 bingo tiles${theme ? ` with this theme/difficulty guidance: ${theme}` : ""}.` }],
+        "casual play, and ironman-friendly (no 'buy X').",
+      messages: [{ role: "user", content:
+        `Create 24 bingo tiles. ${BINGO_STYLE_GUIDANCE[style] || BINGO_STYLE_GUIDANCE.mixed}` +
+        (theme ? ` Extra theme guidance from the clan: ${theme}.` : "") }],
     });
     const text = msg.content.find((b) => b.type === "text")?.text || "";
     const tiles = text.split("\n")
@@ -1236,12 +1342,13 @@ app.post("/api/clans/:id/events", async (req, res) => {
     return res.status(400).json({ error: "This clan already has 5 active events." });
   }
 
+  const style = BINGO_POOLS[req.body?.style] ? req.body.style : "mixed";
   let board = null;
   let aiBoard = false;
   if (type === "bingo") {
-    // AI board when a key is configured; built-in pool otherwise.
-    const aiTasks = process.env.ANTHROPIC_API_KEY ? await generateBingoTasks(theme) : null;
-    board = makeBingoBoard(aiTasks || BINGO_POOL);
+    // AI board when a key is configured; built-in style pool otherwise.
+    const aiTasks = process.env.ANTHROPIC_API_KEY ? await generateBingoTasks(theme, style) : null;
+    board = makeBingoBoard(aiTasks || BINGO_POOLS[style]);
     aiBoard = Boolean(aiTasks);
   }
 
@@ -1249,6 +1356,7 @@ app.post("/api/clans/:id/events", async (req, res) => {
     id: crypto.randomBytes(5).toString("hex"),
     type, target: target || null, theme: theme || null,
     board, aiBoard,
+    style: type === "bingo" ? style : undefined,
     teams: type === "bingo" ? teams : undefined,
     claims: type === "bingo" ? {} : undefined,
     activity: type === "bingo" ? [] : undefined,
@@ -1257,7 +1365,9 @@ app.post("/api/clans/:id/events", async (req, res) => {
   };
   clan.events.push(event);
   saveClans();
-  const label = type === "bingo" ? "🎲 Bingo" : type === "botw" ? `⚔️ Boss of the Week — **${target}**` : `📈 Skill of the Week — **${target}**`;
+  const label = type === "bingo"
+    ? `🎲 Bingo (${BINGO_STYLE_LABEL[style]})`
+    : type === "botw" ? `⚔️ Boss of the Week — **${target}**` : `📈 Skill of the Week — **${target}**`;
   announce(clan, `📯 New event at **${clan.name}**: ${label} (${days} day${days === 1 ? "" : "s"})${theme ? ` — “${theme}”` : ""}`);
   res.status(201).json({ event });
 });

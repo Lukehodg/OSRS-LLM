@@ -74,7 +74,9 @@ A **Clans** constellation sits at the top of the chart. Any player can:
 
 Every bingo event opens as a full-screen event dashboard in the star-chart theme:
 
-- **Tiles with points & sprites** — each of the 24 tasks carries a point value (harder = more) and its OSRS Wiki item sprite; the centre is a free ★ tile.
+- **Board styles** — the creator picks the board's pitch: **Mixed** (a bit of everything), or **PvM at high / mid / low level** (raids-and-Inferno down to Obor-and-Mole). Each style has its own curated task pool, and AI-generated boards follow the same pitch.
+- **Tiles with points & sprites** — each of the 24 tasks carries a point value (harder = more) and its OSRS Wiki item sprite; the centre is a free ★ tile. Points wear **drop-rarity colours** (common → legendary), so the board reads like a loot table.
+- **Celebrations** — landing a claim bursts stars from the tile; completing a line drops a full **✦ BINGO ✦** banner with a star-rain over the board (and the constellation draws itself in).
 - **Claims & verification** — any clan member claims a tile with their RSN (and an optional note); the **clan key-holder** verifies claims (◆) or removes bogus ones. Claimed tiles glow green, verified ones brighter.
 - **Proof screenshots** — attach a proof link when claiming (a Discord/Imgur screenshot URL); it renders as a thumbnail right in the tile detail (other hosts show as a link).
 - **Teams** — name 2–8 teams at event creation ("Bandos, Zamorak") and the board becomes a **race**: claims carry a team, tiles wear team-coloured tags, and a **Team Standings** panel tracks each team's points, tiles and completed lines. Your team choice is remembered between claims.

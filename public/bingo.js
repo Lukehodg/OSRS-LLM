@@ -28,12 +28,14 @@
   let clockTimer = null, pollTimer = null;
   let drawnLines = new Set(); // constellations already drawn (skip re-animation)
   let boardRevealed = false;  // stagger the tile reveal only on open
+  let firstSky = true;        // don't throw a party for lines finished before we opened
 
   // ---- open / close --------------------------------------------------------
   window.openBingo = async function (cid, eid) {
     clanId = cid; eventId = eid; selected = null; filter = "all";
     drawnLines = new Set();
     boardRevealed = false;
+    firstSky = true;
     setFilterUI();
     root.hidden = false;
     boardEl.innerHTML = `<div class="bhq-loading">unrolling the board…</div>`;
@@ -96,6 +98,13 @@
   const wikiImg = (name) =>
     `https://oldschool.runescape.wiki/w/Special:FilePath/${encodeURIComponent(name + ".png")}`;
 
+  // Point tiers, coloured like drop-rarity broadcasts.
+  const tierOf = (pts) =>
+    pts >= 450 ? "legendary" : pts >= 350 ? "epic" : pts >= 250 ? "rare" : pts >= 150 ? "uncommon" : "common";
+  const TIER_COLORS = {
+    common: "#cfc6ad", uncommon: "#8ade7f", rare: "#74b9f0", epic: "#c793f2", legendary: "#ffab52",
+  };
+
   // Proof screenshots: inline thumbnail for hosts the CSP allows, link otherwise.
   const PROOF_IMG_HOSTS = ["cdn.discordapp.com", "media.discordapp.net", "i.imgur.com"];
   function proofHtml(proof) {
@@ -135,8 +144,15 @@
     if (ev) renderBoard();
   });
   function setFilterUI() {
-    filtersEl.querySelectorAll("[data-filter]").forEach((b) =>
-      b.classList.toggle("active", b.dataset.filter === filter));
+    filtersEl.querySelectorAll("[data-filter]").forEach((b) => {
+      b.classList.toggle("active", b.dataset.filter === filter);
+      if (!ev) return;
+      const f = b.dataset.filter;
+      const n = f === "all" ? 25
+        : Array.from({ length: 25 }, (_, i) => i).filter((i) =>
+            f === "verified" ? (statusOf(i) === "verified" || statusOf(i) === "free") : statusOf(i) === f).length;
+      b.innerHTML = `${f} <b>${n}</b>`;
+    });
   }
   const matchesFilter = (i) => filter === "all" || statusOf(i) === filter ||
     (filter === "verified" && statusOf(i) === "free");
@@ -144,8 +160,11 @@
   // ---- render ---------------------------------------------------------------
   function render() {
     titleEl.textContent = `${clan.name} — Bingo`.toUpperCase();
-    subEl.textContent = ev.theme ? `“${ev.theme}”` : (ev.aiBoard ? "board conjured by the sage" : "");
+    const styleLabel = { "pvm-high": "high-level PvM", "pvm-mid": "mid-level PvM", "pvm-low": "low-level PvM" }[ev.style];
+    subEl.textContent = [ev.theme ? `“${ev.theme}”` : "", styleLabel].filter(Boolean).join(" · ")
+      || (ev.aiBoard ? "board conjured by the sage" : "");
     tickClock();
+    setFilterUI();
     renderStats();
     renderBoard();
     renderDetail();
@@ -218,7 +237,7 @@
       const st = statusOf(i);
       const el = document.createElement("button");
       el.type = "button";
-      el.className = `bhq-tile ${st}${selected === i ? " selected" : ""}${matchesFilter(i) ? "" : " dimmed"}${reveal ? " in" : ""}`;
+      el.className = `bhq-tile ${st} t-${tierOf(cell.pts)}${selected === i ? " selected" : ""}${matchesFilter(i) ? "" : " dimmed"}${reveal ? " in" : ""}`;
       if (reveal) el.style.animationDelay = `${i * 22}ms`;
       el.title = cell.name;
 
@@ -238,7 +257,7 @@
       name.textContent = cell.free ? "FREE TILE" : cell.name;
 
       const pts = document.createElement("span");
-      pts.className = "bhq-tile-pts";
+      pts.className = `bhq-tile-pts p-${tierOf(cell.pts)}`;
       pts.textContent = `${cell.pts} pts`;
 
       const badge = document.createElement("span");
@@ -283,12 +302,14 @@
       return { x: r.left - sr.left + r.width / 2, y: r.top - sr.top + r.height / 2 };
     });
     let html = "";
+    const freshNames = [];
     for (const l of LINES) {
       if (l.cells.length > 5 || !l.cells.every(isDone)) continue;
       const pts = l.cells.map((i) => centers[i]);
       const d = pts.map((p, n) => `${n ? "L" : "M"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ") +
         (l.name === "Four corners" ? " Z" : "");
       const fresh = !drawnLines.has(l.name);
+      if (fresh) freshNames.push(l.name);
       drawnLines.add(l.name);
       html += `<path d="${d}" pathLength="1" class="bhq-sky-line${fresh ? " fresh" : ""}"/>`;
       for (const p of pts) {
@@ -296,6 +317,9 @@
       }
     }
     svg.innerHTML = html;
+    // A line finished while we watched — celebrate it.
+    if (!firstSky && freshNames.length) bingoBanner(freshNames[0]);
+    firstSky = false;
   }
   let skyResizeTimer = null;
   window.addEventListener("resize", () => {
@@ -304,10 +328,65 @@
     skyResizeTimer = setTimeout(drawSky, 150);
   });
 
+  // ---- celebrations --------------------------------------------------------
+  const SPARK_GLYPHS = ["✦", "★", "✧", "✶"];
+  const SPARK_COLORS = ["#f2df9f", "#8ade7f", "#74b9f0", "#c793f2", "#ffab52"];
+
+  // A shower of stars from a tile — fired when a claim lands.
+  function burstAtTile(i) {
+    const stage = document.querySelector(".bhq-stage");
+    const tile = boardEl.querySelectorAll(".bhq-tile")[i];
+    if (!stage || !tile) return;
+    const sr = stage.getBoundingClientRect(), tr = tile.getBoundingClientRect();
+    const cx = tr.left - sr.left + tr.width / 2, cy = tr.top - sr.top + tr.height / 2;
+    for (let n = 0; n < 14; n++) {
+      const s = document.createElement("span");
+      s.className = "bhq-spark";
+      s.textContent = SPARK_GLYPHS[n % SPARK_GLYPHS.length];
+      const ang = (n / 14) * Math.PI * 2 + Math.random() * 0.5;
+      const dist = 46 + Math.random() * 60;
+      s.style.left = `${cx}px`;
+      s.style.top = `${cy}px`;
+      s.style.color = SPARK_COLORS[n % SPARK_COLORS.length];
+      s.style.setProperty("--dx", `${Math.cos(ang) * dist}px`);
+      s.style.setProperty("--dy", `${Math.sin(ang) * dist - 18}px`);
+      s.style.setProperty("--rot", `${(Math.random() - 0.5) * 320}deg`);
+      stage.appendChild(s);
+      setTimeout(() => s.remove(), 1000);
+    }
+  }
+
+  // The big moment: a line is complete.
+  function bingoBanner(lineName) {
+    const stage = document.querySelector(".bhq-stage");
+    if (!stage || stage.querySelector(".bhq-banner")) return;
+    const b = document.createElement("div");
+    b.className = "bhq-banner";
+    b.innerHTML = `<span class="bhq-banner-word">✦ BINGO ✦</span><span class="bhq-banner-line">${esc(lineName)} complete</span>`;
+    stage.appendChild(b);
+    // rain stars along the whole stage
+    const sr = stage.getBoundingClientRect();
+    for (let n = 0; n < 26; n++) {
+      const s = document.createElement("span");
+      s.className = "bhq-spark";
+      s.textContent = SPARK_GLYPHS[n % SPARK_GLYPHS.length];
+      s.style.left = `${Math.random() * sr.width}px`;
+      s.style.top = `${Math.random() * sr.height * 0.6}px`;
+      s.style.color = SPARK_COLORS[n % SPARK_COLORS.length];
+      s.style.setProperty("--dx", `${(Math.random() - 0.5) * 60}px`);
+      s.style.setProperty("--dy", `${40 + Math.random() * 90}px`);
+      s.style.setProperty("--rot", `${(Math.random() - 0.5) * 400}deg`);
+      s.style.animationDelay = `${Math.random() * 400}ms`;
+      stage.appendChild(s);
+      setTimeout(() => s.remove(), 1700);
+    }
+    setTimeout(() => b.remove(), 2600);
+  }
+
   function renderDetail() {
     if (selected == null) {
       detailEl.innerHTML = `<div class="bhq-panel-title">TILE DETAIL</div>
-        <div class="bhq-dim">Select a tile to see its points, claim it, or verify a claim.</div>`;
+        <div class="bhq-dim">Pick a tile from the sky — claim it for your points, or verify a clanmate's catch.</div>`;
       return;
     }
     const i = selected, cell = cellOf(i), claim = claimOf(i), st = statusOf(i);
@@ -410,6 +489,7 @@
       if (!r.ok) throw new Error(body.error || "that didn't work");
       ev = body.event;
       render();
+      if (kind === "claim") requestAnimationFrame(() => burstAtTile(payload.tile));
     } catch (err) {
       status.className = "clans-status err";
       status.textContent = err.message;
