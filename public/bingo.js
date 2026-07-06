@@ -17,6 +17,8 @@
   const linesEl = document.getElementById("bhq-lines");
   const lbEl = document.getElementById("bhq-lb");
   const feedEl = document.getElementById("bhq-feed");
+  const teamsPanel = document.getElementById("bhq-teams-panel");
+  const teamsEl = document.getElementById("bhq-teams");
 
   const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   const keys = () => { try { return JSON.parse(localStorage.getItem("wom.clan.keys")) || {}; } catch { return {}; } };
@@ -64,6 +66,13 @@
     return { name: c.name, pts: Number(c.pts) || 100, img: c.img || null, free: Boolean(c.free) || i === 12 };
   };
   const claimOf = (i) => (ev.claims && ev.claims[i]) || null;
+
+  // Team bingo: stable colour per team (by its position in the event's list).
+  const TEAM_HUES = ["#d9c07a", "#8fd48f", "#7fb8d8", "#e0857a", "#c39bd3", "#f0b27a", "#a3d9c9", "#d8d87f"];
+  const teamColor = (name) => {
+    const i = (ev.teams || []).indexOf(name);
+    return TEAM_HUES[i >= 0 ? i % TEAM_HUES.length : 0];
+  };
   const statusOf = (i) => cellOf(i).free ? "free" : claimOf(i) ? (claimOf(i).verified ? "verified" : "claimed") : "open";
   const isDone = (i) => statusOf(i) !== "open";
   const isManager = () => Boolean(keys()[clanId]);
@@ -82,6 +91,18 @@
 
   const wikiImg = (name) =>
     `https://oldschool.runescape.wiki/w/Special:FilePath/${encodeURIComponent(name + ".png")}`;
+
+  // Proof screenshots: inline thumbnail for hosts the CSP allows, link otherwise.
+  const PROOF_IMG_HOSTS = ["cdn.discordapp.com", "media.discordapp.net", "i.imgur.com"];
+  function proofHtml(proof) {
+    if (!proof) return "";
+    let host = "";
+    try { host = new URL(proof).hostname; } catch { return ""; }
+    const inline = PROOF_IMG_HOSTS.includes(host);
+    return `<a class="bhq-proof" href="${esc(proof)}" target="_blank" rel="noopener noreferrer">${
+      inline ? `<img src="${esc(proof)}" alt="proof screenshot" loading="lazy">` : `<span class="bhq-proof-link">view proof ↗</span>`
+    }</a>`;
+  }
 
   const ago = (t) => {
     const s = Math.max(1, Math.floor((Date.now() - t) / 1000));
@@ -125,8 +146,35 @@
     renderBoard();
     renderDetail();
     renderLines();
+    renderTeams();
     renderLeaderboard();
     renderFeed();
+  }
+
+  function renderTeams() {
+    if (!ev.teams || !ev.teams.length) { teamsPanel.hidden = true; return; }
+    teamsPanel.hidden = false;
+    const rows = ev.teams.map((t) => {
+      let pts = 0, tiles = 0;
+      for (const [i, c] of Object.entries(ev.claims || {})) {
+        if (c.team !== t) continue;
+        pts += cellOf(Number(i)).pts;
+        tiles += 1;
+      }
+      const teamHas = (i) => i === 12 || (claimOf(i) && claimOf(i).team === t);
+      const lines = LINES.filter((l) => l.cells.every(teamHas)).length;
+      return { t, pts, tiles, lines };
+    }).sort((a, b) => b.pts - a.pts);
+    teamsEl.innerHTML = rows.map((r, n) =>
+      `<div class="bhq-lb-row"><span class="bhq-lb-rank">#${n + 1}</span>
+       <span class="bhq-team-dot"></span>
+       <span class="bhq-lb-name">${esc(r.t)}</span>
+       <span class="bhq-lb-sub">${r.tiles} tile${r.tiles === 1 ? "" : "s"}${r.lines ? ` · ${r.lines} line${r.lines === 1 ? "" : "s"}` : ""}</span>
+       <b>${r.pts.toLocaleString()}</b></div>`).join("");
+    // Dot colours via CSSOM (CSP blocks inline style attributes).
+    teamsEl.querySelectorAll(".bhq-team-dot").forEach((dot, n) => {
+      dot.style.background = teamColor(rows[n].t);
+    });
   }
 
   function renderStats() {
@@ -184,6 +232,15 @@
       badge.textContent = st === "verified" ? "◆" : st === "claimed" ? "✓" : st === "free" ? "★" : "";
 
       el.append(icon, name, pts, badge);
+      const claim = claimOf(i);
+      if (ev.teams && claim && claim.team) {
+        const tag = document.createElement("span");
+        tag.className = "bhq-tile-team";
+        tag.textContent = claim.team;
+        tag.style.color = teamColor(claim.team);
+        tag.style.borderColor = teamColor(claim.team);
+        el.appendChild(tag);
+      }
       el.addEventListener("click", () => { selected = selected === i ? null : i; renderBoard(); renderDetail(); });
       boardEl.appendChild(el);
     }
@@ -206,9 +263,10 @@
 
     if (claim) {
       html += `<div class="bhq-d-claim">
-        <div>Claimed by <b>${esc(claim.player)}</b> · ${ago(claim.at)}</div>
+        <div>Claimed by <b>${esc(claim.player)}</b>${claim.team ? ` for <b>${esc(claim.team)}</b>` : ""} · ${ago(claim.at)}</div>
         ${claim.note ? `<div class="bhq-dim">“${esc(claim.note)}”</div>` : ""}
-        ${claim.verified ? `<div class="bhq-verified">◆ verified by the clan leader</div>` : `<div class="bhq-dim">screenshot proof goes to your clan's Discord</div>`}
+        ${proofHtml(claim.proof)}
+        ${claim.verified ? `<div class="bhq-verified">◆ verified by the clan leader</div>` : (claim.proof ? "" : `<div class="bhq-dim">no proof attached — drop a screenshot link when claiming</div>`)}
       </div>`;
       if (isManager()) {
         html += `<div class="bhq-d-actions">
@@ -220,10 +278,17 @@
       html += `<div class="bhq-dim">The centre is everyone's — it counts toward every line.</div>`;
     } else if (live()) {
       const acct = window.WOM && window.WOM.account;
+      const lastTeam = (() => { try { return localStorage.getItem("wom.bingo.team") || ""; } catch { return ""; } })();
+      const teamSelect = ev.teams
+        ? `<select name="team">${["<option value=\"\">— pick your team —</option>"]
+            .concat(ev.teams.map((t) => `<option value="${esc(t)}"${t === lastTeam ? " selected" : ""}>${esc(t)}</option>`)).join("")}</select>`
+        : "";
       html += `<form class="bhq-claim-form" data-act="claim">
         <input name="player" type="text" maxlength="20" placeholder="your RSN" spellcheck="false"
                value="${esc(acct ? acct.player : "")}" />
+        ${teamSelect}
         <input name="note" type="text" maxlength="120" placeholder="note — e.g. got it 3rd kill (optional)" />
+        <input name="proof" type="url" maxlength="300" placeholder="proof link — Discord/Imgur screenshot URL (optional)" spellcheck="false" />
         <button class="clans-btn primary" type="submit">Claim tile</button>
       </form>`;
     } else {
@@ -237,10 +302,24 @@
     if (dImg) dImg.addEventListener("error", () => { dImg.parentElement.textContent = "✦"; });
 
     const status = detailEl.querySelector("#bhq-d-status");
+    // Proof thumbnails fall back to a plain link if the image won't load.
+    const pImg = detailEl.querySelector(".bhq-proof img");
+    if (pImg) pImg.addEventListener("error", () => {
+      pImg.closest("a").innerHTML = `<span class="bhq-proof-link">view proof ↗</span>`;
+    });
+
     const form = detailEl.querySelector("[data-act=claim]");
     if (form) form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      await act("claim", { tile: i, player: form.player.value.trim(), note: form.note.value.trim() }, status);
+      const team = form.team ? form.team.value : "";
+      if (team) { try { localStorage.setItem("wom.bingo.team", team); } catch {} }
+      await act("claim", {
+        tile: i,
+        player: form.player.value.trim(),
+        team,
+        note: form.note.value.trim(),
+        proof: form.proof.value.trim(),
+      }, status);
     });
     const vBtn = detailEl.querySelector("[data-act=verify]");
     if (vBtn) vBtn.addEventListener("click", () => act("verify", { tile: i }, status));

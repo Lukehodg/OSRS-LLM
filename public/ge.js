@@ -35,7 +35,88 @@
   };
   let watch = LS.get("wom.ge.watch", []);    // [{ id, name }]
   let alerts = LS.get("wom.ge.alerts", []);  // [{ id, name, field, op, value, armed }]
+  let port = LS.get("wom.ge.port", { open: [], closed: [] }); // portfolio (this device)
+  if (!port || typeof port !== "object") port = { open: [], closed: [] };
+  port.open = Array.isArray(port.open) ? port.open : [];
+  port.closed = Array.isArray(port.closed) ? port.closed : [];
+  const savePort = () => LS.set("wom.ge.port", port);
   const isWatched = (id) => watch.some((w) => w.id === id);
+
+  // GE sell tax, mirrored from the server: 2% floored, capped 5m, none <100gp.
+  const sellTax = (p) => (!p || p < 100 ? 0 : Math.min(Math.floor(p * 0.02), 5_000_000));
+  const netSell = (p) => (p == null ? null : p - sellTax(p));
+
+  // ---- server-side alert mirror + push -------------------------------------
+  // Alerts also live on the server, where a central poller keeps evaluating
+  // them with every tab closed: missed fires greet you on return, and (when
+  // permitted) arrive as a browser push.
+  const deviceId = (() => {
+    let d = LS.get("wom.ge.device", null);
+    if (!d) { d = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)); LS.set("wom.ge.device", d); }
+    return d;
+  })();
+  let pushOffered = false;
+
+  async function syncAlerts() {
+    try {
+      const r = await fetch("/api/ge/alerts/sync", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device: deviceId, alerts }),
+      });
+      const body = await r.json();
+      if (!r.ok) return;
+      // Adopt the merged armed-state (a fire on either side sticks).
+      if (Array.isArray(body.alerts) && body.alerts.length === alerts.length) {
+        alerts = body.alerts;
+        LS.set("wom.ge.alerts", alerts);
+      }
+      showMissedFires(body.fired || []);
+      if (body.push && !pushOffered) { pushOffered = true; trySubscribePush(); }
+    } catch { /* offline / server old — local poller still covers the tab */ }
+  }
+
+  function showMissedFires(fired) {
+    const ackTs = LS.get("wom.ge.alertAck", 0);
+    const fresh = fired.filter((f) => {
+      if (f.at <= ackTs) return false;
+      const seenAt = localFires.get(`${f.id}:${f.field}:${f.op}:${f.value}`);
+      return !(seenAt && Math.abs(f.at - seenAt) < 10 * 60_000);
+    });
+    for (const f of fresh.slice(-6)) toast(`🔔 while you were away — ${f.text}`);
+    // Ack everything we've seen (deduped fires included) so it isn't replayed.
+    const seen = fired.filter((f) => f.at > ackTs);
+    if (!seen.length) return;
+    const upTo = Math.max(...seen.map((f) => f.at));
+    LS.set("wom.ge.alertAck", upTo);
+    fetch("/api/ge/alerts/ack", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ device: deviceId, upTo }),
+    }).catch(() => {});
+  }
+
+  async function trySubscribePush() {
+    try {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+      if (!window.Notification || Notification.permission !== "granted") return;
+      const { key } = await fetch("/api/push/key").then((r) => r.json());
+      if (!key) return;
+      const reg = await navigator.serviceWorker.register("sw.js");
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(key),
+      });
+      await fetch("/api/ge/alerts/subscribe", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device: deviceId, subscription: sub.toJSON() }),
+      });
+    } catch { /* push is a bonus — never break alerts over it */ }
+  }
+
+  function urlBase64ToUint8Array(base64) {
+    const pad = "=".repeat((4 - (base64.length % 4)) % 4);
+    const raw = atob((base64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+    return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+  }
 
   // ---- formatting ----
   // Coerce to a finite number so upstream data can never inject strings
@@ -64,6 +145,7 @@
     if (!clockTimer) { tickClock(); clockTimer = setInterval(tickClock, 1000); }
     loadScreener();
     startPoller();
+    syncAlerts(); // mirror to the server + collect fires missed while away
     setTimeout(() => searchEl.focus(), 60);
     requestAnimationFrame(drawChart);
   }
@@ -146,6 +228,7 @@
         `<span class="ge-quote-acts">` +
           `<button id="ge-pin" class="ge-icon-btn" type="button" title="Add to watchlist">${isWatched(q.id) ? "★" : "☆"}</button>` +
           `<button id="ge-alert" class="ge-icon-btn" type="button" title="Set a price alert">🔔</button>` +
+          `<button id="ge-pos" class="ge-icon-btn" type="button" title="Log a buy in your portfolio">⊕</button>` +
         `</span>` +
       `</div>` +
       `<div class="ge-grid">` +
@@ -159,10 +242,35 @@
       cell("High alch", gp(q.highalch) + " gp") +
       `</div>` +
       `<div id="ge-alert-form" class="ge-alert-form" hidden></div>` +
+      `<div id="ge-pos-form" class="ge-alert-form" hidden></div>` +
       (q.examine ? `<div class="ge-examine">“${escapeHtml(q.examine)}”</div>` : "");
 
     document.getElementById("ge-pin").addEventListener("click", () => toggleWatch(q));
     document.getElementById("ge-alert").addEventListener("click", () => toggleAlertForm(q));
+    document.getElementById("ge-pos").addEventListener("click", () => togglePosForm(q));
+  }
+
+  // ---- portfolio: log a buy ----
+  function togglePosForm(q) {
+    const form = document.getElementById("ge-pos-form");
+    if (!form) return;
+    if (!form.hidden) { form.hidden = true; return; }
+    form.innerHTML =
+      `<input id="ge-pos-qty" type="number" min="1" step="1" value="1" title="Quantity" />` +
+      `<span class="ge-pos-x">×</span>` +
+      `<input id="ge-pos-price" type="number" min="1" placeholder="buy price (gp)" value="${q.high ?? ""}" />` +
+      `<button id="ge-pos-add" type="button" class="ge-mini-btn">Log buy</button>`;
+    form.hidden = false;
+    document.getElementById("ge-pos-add").addEventListener("click", () => {
+      const qty = Math.floor(Number(document.getElementById("ge-pos-qty").value));
+      const buy = Math.floor(Number(document.getElementById("ge-pos-price").value));
+      if (!Number.isFinite(qty) || qty < 1 || !Number.isFinite(buy) || buy < 1) return;
+      port.open = [{ id: q.id, name: q.name, qty, buy, at: Date.now() }, ...port.open].slice(0, 30);
+      savePort();
+      form.hidden = true;
+      toast(`Logged — ${fmt(qty)}× ${q.name} @ ${gp(buy)} gp`);
+      if (screen === "port") renderScreen();
+    });
   }
 
   function toggleWatch(q) {
@@ -197,9 +305,12 @@
       alerts = [{ id: q.id, name: q.name, field, op, value, armed: true }, ...alerts].slice(0, 50);
       LS.set("wom.ge.alerts", alerts);
       form.hidden = true;
-      if (window.Notification && Notification.permission === "default") Notification.requestPermission();
+      if (window.Notification && Notification.permission === "default") {
+        Notification.requestPermission().then(() => trySubscribePush()).catch(() => {});
+      }
       toast(`Alert set — ${q.name} ${op === "lte" ? "≤" : "≥"} ${gp(value)}`);
       startPoller();
+      syncAlerts();
     });
   }
 
@@ -364,6 +475,7 @@
 
   function renderScreen() {
     if (screen === "watch") return renderWatch();
+    if (screen === "port") return renderPort();
     if (!screener) return;
     const rows = screener[screen] || [];
     screenEl.innerHTML = "";
@@ -426,10 +538,111 @@
           `<span class="ge-row-metric">${a.field === "buy" ? "buy" : a.field === "sell" ? "sell" : "margin"} ${a.op === "lte" ? "≤" : "≥"} ${fmt(a.value)}</span>` +
           `<span class="ge-row-x" title="Remove alert">✕</span>`;
         el.querySelector(".ge-row-x").addEventListener("click", () => {
-          alerts.splice(i, 1); LS.set("wom.ge.alerts", alerts); renderWatch();
+          alerts.splice(i, 1); LS.set("wom.ge.alerts", alerts); syncAlerts(); renderWatch();
         });
         screenEl.appendChild(el);
       });
+    }
+  }
+
+  // ---- portfolio tab ----
+  async function renderPort() {
+    screenEl.innerHTML = "";
+    if (!port.open.length && !port.closed.length) {
+      screenEl.innerHTML = `<div class="ge-screen-loading">Log a buy with ⊕ on any quote — track your flips and realised profit here.</div>`;
+      return;
+    }
+
+    // Live prices for open positions (batch, cached server-side).
+    let quotes = {};
+    if (port.open.length) {
+      screenEl.innerHTML = `<div class="ge-screen-loading">pricing your positions…</div>`;
+      try {
+        const ids = [...new Set(port.open.map((p) => p.id))].join(",");
+        const body = await fetch(`/api/ge/quotes?ids=${ids}`).then((r) => r.json());
+        quotes = body.quotes || {};
+      } catch { /* rows will show — for price */ }
+      screenEl.innerHTML = "";
+    }
+
+    const realised = port.closed.reduce((n, c) => n + c.profit, 0);
+    let invested = 0, unrealised = 0, priced = 0;
+    for (const p of port.open) {
+      invested += p.qty * p.buy;
+      const low = Number(quotes[p.id]?.low);
+      if (Number.isFinite(low)) { unrealised += p.qty * (netSell(low) - p.buy); priced++; }
+    }
+    const plCls = (v) => (v > 0 ? "up" : v < 0 ? "down" : "");
+    const sum = document.createElement("div");
+    sum.className = "ge-port-summary";
+    sum.innerHTML =
+      `<div class="ge-cell"><span class="ge-cell-l">Invested (open)</span><span class="ge-cell-v">${fmt(invested)} gp</span></div>` +
+      `<div class="ge-cell"><span class="ge-cell-l">Unrealised (after tax)</span><span class="ge-cell-v ${plCls(unrealised)}">${priced ? (unrealised >= 0 ? "+" : "") + fmt(unrealised) + " gp" : "—"}</span></div>` +
+      `<div class="ge-cell"><span class="ge-cell-l">Realised profit</span><span class="ge-cell-v ${plCls(realised)}">${(realised >= 0 ? "+" : "") + fmt(realised)} gp</span></div>`;
+    screenEl.appendChild(sum);
+
+    if (port.open.length) {
+      const hd = document.createElement("div");
+      hd.className = "ge-watch-divider";
+      hd.textContent = "OPEN POSITIONS";
+      screenEl.appendChild(hd);
+    }
+    port.open.forEach((p, idx) => {
+      const low = Number(quotes[p.id]?.low);
+      const pl = Number.isFinite(low) ? p.qty * (netSell(low) - p.buy) : null;
+      const el = document.createElement("div");
+      el.className = "ge-row ge-port-row";
+      el.innerHTML =
+        `<span class="ge-row-name" data-load>${escapeHtml(p.name)}</span>` +
+        `<span class="ge-port-lot">${fmt(p.qty)}× @ ${fmt(p.buy)}</span>` +
+        `<span class="ge-row-metric ${pl == null ? "" : plCls(pl)}">${pl == null ? "—" : (pl >= 0 ? "+" : "") + fmt(pl)}</span>` +
+        `<button class="ge-mini-btn" data-sell type="button">Sell</button>` +
+        `<span class="ge-row-x" title="Remove without selling">✕</span>`;
+      el.querySelector("[data-load]").addEventListener("click", () => { searchEl.value = p.name; loadItem(p.id); });
+      el.querySelector(".ge-row-x").addEventListener("click", () => {
+        port.open.splice(idx, 1); savePort(); renderPort();
+      });
+      el.querySelector("[data-sell]").addEventListener("click", () => {
+        const f = document.createElement("div");
+        f.className = "ge-alert-form ge-sell-form";
+        f.innerHTML =
+          `<input type="number" min="1" value="${Number.isFinite(low) ? low : p.buy}" title="Sell price (gp each)" />` +
+          `<button class="ge-mini-btn" data-ok type="button">Confirm sell</button>` +
+          `<button class="ge-mini-btn" data-no type="button">✕</button>`;
+        el.after(f);
+        const input = f.querySelector("input");
+        f.querySelector("[data-no]").addEventListener("click", () => f.remove());
+        f.querySelector("[data-ok]").addEventListener("click", () => {
+          const sell = Math.floor(Number(input.value));
+          if (!Number.isFinite(sell) || sell < 1) return;
+          const profit = p.qty * (netSell(sell) - p.buy);
+          port.closed = [{ ...p, sell, closedAt: Date.now(), profit }, ...port.closed].slice(0, 100);
+          port.open.splice(idx, 1);
+          savePort();
+          toast(`Sold ${fmt(p.qty)}× ${p.name} @ ${gp(sell)} — ${profit >= 0 ? "+" : ""}${fmt(profit)} gp after tax`);
+          renderPort();
+        });
+      });
+      screenEl.appendChild(el);
+    });
+
+    if (port.closed.length) {
+      const hd = document.createElement("div");
+      hd.className = "ge-watch-divider";
+      hd.innerHTML = `REALISED <span class="ge-port-clear" title="Clear realised history">clear</span>`;
+      hd.querySelector(".ge-port-clear").addEventListener("click", () => {
+        port.closed = []; savePort(); renderPort();
+      });
+      screenEl.appendChild(hd);
+      for (const c of port.closed.slice(0, 30)) {
+        const el = document.createElement("div");
+        el.className = "ge-row ge-port-row closed";
+        el.innerHTML =
+          `<span class="ge-row-name">${escapeHtml(c.name)}</span>` +
+          `<span class="ge-port-lot">${fmt(c.qty)}× ${fmt(c.buy)}→${fmt(c.sell)}</span>` +
+          `<span class="ge-row-metric ${plCls(c.profit)}">${(c.profit >= 0 ? "+" : "") + fmt(c.profit)}</span>`;
+        screenEl.appendChild(el);
+      }
     }
   }
 
@@ -463,11 +676,15 @@
         a.armed = true; changed = true; // re-arm once condition clears
       }
     }
-    if (changed) LS.set("wom.ge.alerts", alerts);
+    if (changed) { LS.set("wom.ge.alerts", alerts); syncAlerts(); }
   }
+  // Signatures of alerts fired locally, so the server's recap of the same
+  // fire (its poller runs on its own minute) isn't re-toasted as "missed".
+  const localFires = new Map();
   function fireAlert(a, q) {
     const actual = a.field === "buy" ? q.high : a.field === "sell" ? q.low : q.marginAfterTax;
     const msg = `${a.name}: ${a.field} is ${gp(actual)} gp (${a.op === "lte" ? "≤" : "≥"} ${gp(a.value)})`;
+    localFires.set(`${a.id}:${a.field}:${a.op}:${a.value}`, Date.now());
     toast("🔔 " + msg);
     try {
       if (window.Notification && Notification.permission === "granted") {

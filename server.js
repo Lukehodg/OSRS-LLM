@@ -23,7 +23,8 @@ app.use((_req, res, next) => {
       "script-src 'self'",
       "style-src 'self' https://fonts.googleapis.com",
       "font-src https://fonts.gstatic.com",
-      "img-src 'self' data: https://oldschool.runescape.wiki",
+      // Wiki sprites + the image hosts bingo proof screenshots live on.
+      "img-src 'self' data: https://oldschool.runescape.wiki https://cdn.discordapp.com https://media.discordapp.net https://i.imgur.com",
       "connect-src 'self'",
       "frame-ancestors 'none'",
     ].join("; "),
@@ -892,6 +893,25 @@ app.get("/api/ge/screener", async (req, res) => {
   }
 });
 
+// Batch quotes (portfolio pricing): latest high/low for up to 30 items.
+app.get("/api/ge/quotes", async (req, res) => {
+  if (hiscoresLimited(req.ip)) return res.status(429).json({ error: "Slow down a touch." });
+  const ids = String(req.query.ids || "").split(",")
+    .map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 30);
+  if (!ids.length) return res.status(400).json({ error: "No item ids given." });
+  try {
+    const latest = await getLatestAll();
+    const quotes = {};
+    for (const id of ids) {
+      const p = latest.data?.[String(id)] || {};
+      quotes[id] = { high: p.high ?? null, low: p.low ?? null };
+    }
+    res.json({ quotes });
+  } catch (err) {
+    res.status(502).json({ error: `Price feed unavailable (${err.message}).` });
+  }
+});
+
 const GE_ANALYSE_SYSTEM_PROMPT = `You are the Wise Old Man of Draynor Village, moonlighting as a shrewd Grand Exchange market analyst for Old School RuneScape. You are given live market data for one item — instant-buy and instant-sell prices, the margin after the 2% GE sales tax, buy limit, recent 1-hour volume, and a summary of the recent price trend.
 
 You may be asked either for a market ANALYSIS or a price FORECAST — the task is stated at the end of the data.
@@ -984,7 +1004,20 @@ function saveClans() {
   }, 250);
 }
 
-const publicClan = ({ token, ...c }) => c; // never leak edit tokens
+// Never leak edit tokens or webhook URLs (a webhook URL is a post-capability).
+const publicClan = ({ token, webhook, ...c }) => ({ ...c, hasWebhook: Boolean(webhook) });
+
+const WEBHOOK_RE = /^https:\/\/(www\.)?(discord\.com|discordapp\.com)\/api\/webhooks\/\d+\/[\w-]+$/;
+
+// Fire-and-forget Discord announcement — never blocks or fails a request.
+function announce(clan, content) {
+  if (!clan.webhook) return;
+  fetch(clan.webhook, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: "RuneScribe", content: String(content).slice(0, 1900) }),
+  }).catch(() => {});
+}
 
 const clean = (s, max) => (typeof s === "string" ? s.trim().slice(0, max) : "");
 
@@ -1097,9 +1130,13 @@ app.post("/api/clans", async (req, res) => {
   const name = clean(req.body?.name, 40);
   const description = clean(req.body?.description, 240);
   const discord = clean(req.body?.discord, 120);
+  const webhook = clean(req.body?.webhook, 200);
   const womGroupId = req.body?.womGroupId;
 
   if (name.length < 2) return res.status(400).json({ error: "Clan name must be at least 2 characters." });
+  if (webhook && !WEBHOOK_RE.test(webhook)) {
+    return res.status(400).json({ error: "That doesn't look like a Discord webhook URL (discord.com/api/webhooks/…)." });
+  }
   if (clans.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
     return res.status(409).json({ error: "A clan with that name is already registered." });
   }
@@ -1118,6 +1155,7 @@ app.post("/api/clans", async (req, res) => {
     token: crypto.randomBytes(16).toString("hex"),
     name, description,
     discord: discord || null,
+    webhook: webhook || null,
     wom,
     events: [],
     createdAt: Date.now(),
@@ -1151,6 +1189,20 @@ function authClan(req, res) {
   return clan;
 }
 
+// Set or clear the clan's Discord webhook (key-holder only).
+app.post("/api/clans/:id/webhook", (req, res) => {
+  const clan = authClan(req, res);
+  if (!clan) return;
+  const webhook = clean(req.body?.webhook, 200);
+  if (webhook && !WEBHOOK_RE.test(webhook)) {
+    return res.status(400).json({ error: "That doesn't look like a Discord webhook URL (discord.com/api/webhooks/…)." });
+  }
+  clan.webhook = webhook || null;
+  saveClans();
+  if (clan.webhook) announce(clan, `🔗 **${clan.name}** is now announcing events from RuneScribe.`);
+  res.json({ ok: true, hasWebhook: Boolean(clan.webhook) });
+});
+
 // Create an event (requires the clan key from registration).
 app.post("/api/clans/:id/events", async (req, res) => {
   const type = ["botw", "sotw", "bingo"].includes(req.body?.type) ? req.body.type : null;
@@ -1165,6 +1217,18 @@ app.post("/api/clans/:id/events", async (req, res) => {
   const target = clean(req.body?.target, 60);      // boss or skill name
   const theme = clean(req.body?.theme, 160);       // bingo theme (optional)
   const days = Math.min(Math.max(Number(req.body?.days) || 7, 1), 30);
+
+  // Optional bingo teams: comma-separated, 2-8 unique names.
+  let teams = null;
+  if (type === "bingo" && req.body?.teams) {
+    const seen = new Set();
+    teams = clean(req.body.teams, 200).split(",")
+      .map((t) => t.trim().slice(0, 20))
+      .filter((t) => t.length >= 2 && !seen.has(t.toLowerCase()) && seen.add(t.toLowerCase()))
+      .slice(0, 8);
+    if (teams.length === 1) return res.status(400).json({ error: "Teams need at least two names (comma separated)." });
+    if (!teams.length) teams = null;
+  }
   if ((type === "botw" || type === "sotw") && target.length < 2) {
     return res.status(400).json({ error: type === "botw" ? "Name the boss." : "Name the skill." });
   }
@@ -1185,6 +1249,7 @@ app.post("/api/clans/:id/events", async (req, res) => {
     id: crypto.randomBytes(5).toString("hex"),
     type, target: target || null, theme: theme || null,
     board, aiBoard,
+    teams: type === "bingo" ? teams : undefined,
     claims: type === "bingo" ? {} : undefined,
     activity: type === "bingo" ? [] : undefined,
     startsAt: Date.now(),
@@ -1192,10 +1257,27 @@ app.post("/api/clans/:id/events", async (req, res) => {
   };
   clan.events.push(event);
   saveClans();
+  const label = type === "bingo" ? "🎲 Bingo" : type === "botw" ? `⚔️ Boss of the Week — **${target}**` : `📈 Skill of the Week — **${target}**`;
+  announce(clan, `📯 New event at **${clan.name}**: ${label} (${days} day${days === 1 ? "" : "s"})${theme ? ` — “${theme}”` : ""}`);
   res.status(201).json({ event });
 });
 
 // ---- Bingo claims & verification -----------------------------------------
+
+// Bingo lines, mirrored client-side; the free centre always counts.
+const BINGO_LINES = (() => {
+  const rows = [0, 1, 2, 3, 4].map((r) => ({ name: `Row ${r + 1}`, cells: [0, 1, 2, 3, 4].map((c) => r * 5 + c) }));
+  const cols = [0, 1, 2, 3, 4].map((c) => ({ name: `Column ${c + 1}`, cells: [0, 1, 2, 3, 4].map((r) => r * 5 + c) }));
+  return rows.concat(cols, [
+    { name: "Diagonal ↘", cells: [0, 6, 12, 18, 24] },
+    { name: "Diagonal ↗", cells: [20, 16, 12, 8, 4] },
+    { name: "Four corners", cells: [0, 4, 20, 24] },
+    { name: "Blackout", cells: Array.from({ length: 25 }, (_, i) => i) },
+  ]);
+})();
+
+const linesDone = (ev) =>
+  BINGO_LINES.filter((l) => l.cells.every((i) => i === 12 || ev.claims[i])).map((l) => l.name);
 
 function findBingo(req, res) {
   const clan = clans.find((c) => c.id === req.params.id);
@@ -1236,11 +1318,37 @@ app.post("/api/clans/:id/events/:eventId/claim", (req, res) => {
   if (tile === 12) return res.status(400).json({ error: "The centre tile is free — no claim needed." });
   const player = clean(req.body?.player, 20);
   const note = clean(req.body?.note, 120);
+  const proof = clean(req.body?.proof, 300);
+  const team = clean(req.body?.team, 20);
   if (!player) return res.status(400).json({ error: "Who claims it? Add your name." });
+  if (ev.teams && !ev.teams.includes(team)) {
+    return res.status(400).json({ error: "Pick your team — this is a team bingo." });
+  }
+  if (proof && !/^https:\/\/\S+$/.test(proof)) {
+    return res.status(400).json({ error: "Proof must be an https:// link (Discord/Imgur screenshot URL)." });
+  }
   if (ev.claims[tile]) return res.status(409).json({ error: "That tile is already claimed." });
 
-  ev.claims[tile] = { player, note: note || null, at: Date.now(), verified: false };
-  logActivity(ev, `${player} claimed “${tileName(ev, tile)}”`);
+  const before = linesDone(ev);
+  ev.claims[tile] = {
+    player, team: ev.teams ? team : null,
+    note: note || null, proof: proof || null,
+    at: Date.now(), verified: false,
+  };
+  const who = ev.teams ? `${player} [${team}]` : player;
+  logActivity(ev, `${who} claimed “${tileName(ev, tile)}”`);
+  saveClans();
+
+  const { clan } = found;
+  const cell = ev.board[tile];
+  const pts = typeof cell === "object" && cell ? cell.pts : null;
+  announce(clan, `✅ **${who}** claimed “${tileName(ev, tile)}”${pts ? ` (+${pts} pts)` : ""}${note ? ` — “${note}”` : ""}${proof ? `\n${proof}` : ""}`);
+  for (const line of linesDone(ev)) {
+    if (!before.includes(line)) {
+      logActivity(ev, `✦ BINGO — ${line} complete!`);
+      announce(clan, `✦ **BINGO!** ${line} is complete at **${clan.name}**!`);
+    }
+  }
   saveClans();
   res.status(201).json({ event: ev });
 });
@@ -1260,6 +1368,7 @@ app.post("/api/clans/:id/events/:eventId/verify", (req, res) => {
     ? `✦ verified ${claim.player}'s “${tileName(ev, tile)}”`
     : `verification removed from “${tileName(ev, tile)}”`);
   saveClans();
+  if (claim.verified) announce(clan, `◆ **${claim.player}**'s “${tileName(ev, tile)}” was verified.`);
   res.json({ event: ev });
 });
 
@@ -1328,6 +1437,178 @@ app.get("/api/runelite/:player", async (req, res) => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// GE price alerts — server-side evaluation + optional Web Push.
+// Devices mirror their alerts here; a central poller checks prices every
+// minute (even with every tab closed), records fired alerts for the next
+// visit, and — where the browser granted permission — sends a push.
+// ---------------------------------------------------------------------------
+
+const ALERTS_FILE = path.join(DATA_DIR, "alerts.json");
+let alertStore = {}; // device -> { alerts, fired, sub, updatedAt }
+try {
+  alertStore = JSON.parse(fs.readFileSync(ALERTS_FILE, "utf8"));
+  if (!alertStore || typeof alertStore !== "object") alertStore = {};
+} catch { alertStore = {}; }
+
+let alertSaveTimer = null;
+function saveAlerts() {
+  clearTimeout(alertSaveTimer);
+  alertSaveTimer = setTimeout(() => {
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(ALERTS_FILE, JSON.stringify(alertStore));
+    } catch (err) { console.error("alert save failed:", err.message); }
+  }, 250);
+}
+
+// Web Push is optional: VAPID keys are generated once and persisted; if the
+// web-push module is missing the whole feature degrades to fired-history.
+let webpush = null;
+let vapidPublicKey = null;
+try {
+  webpush = (await import("web-push")).default;
+  const VAPID_FILE = path.join(DATA_DIR, "vapid.json");
+  let keys;
+  try { keys = JSON.parse(fs.readFileSync(VAPID_FILE, "utf8")); } catch { keys = null; }
+  if (!keys || !keys.publicKey) {
+    keys = webpush.generateVAPIDKeys();
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(VAPID_FILE, JSON.stringify(keys));
+  }
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:admin@runescribe.example", keys.publicKey, keys.privateKey);
+  vapidPublicKey = keys.publicKey;
+} catch (err) {
+  console.warn("Web Push disabled:", err.message);
+}
+
+const DEVICE_RE = /^[\w-]{8,64}$/;
+const ALERT_FIELDS = new Set(["buy", "sell", "margin"]);
+
+function sanitizeAlerts(raw) {
+  if (!Array.isArray(raw)) return null;
+  const out = [];
+  for (const a of raw.slice(0, 50)) {
+    const id = Number(a?.id), value = Number(a?.value);
+    if (!Number.isInteger(id) || id <= 0 || !Number.isFinite(value)) continue;
+    if (!ALERT_FIELDS.has(a?.field) || !["lte", "gte"].includes(a?.op)) continue;
+    out.push({
+      id, value,
+      name: clean(a?.name, 60) || `item ${id}`,
+      field: a.field, op: a.op,
+      armed: a?.armed !== false,
+    });
+  }
+  return out;
+}
+
+// Mirror this device's alerts; returns any alerts that fired since last ack.
+app.post("/api/ge/alerts/sync", (req, res) => {
+  if (hiscoresLimited(req.ip)) return res.status(429).json({ error: "Slow down a touch." });
+  const device = String(req.body?.device || "");
+  if (!DEVICE_RE.test(device)) return res.status(400).json({ error: "Invalid device id." });
+  const alerts = sanitizeAlerts(req.body?.alerts);
+  if (!alerts) return res.status(400).json({ error: "Invalid alerts payload." });
+
+  if (!alertStore[device] && Object.keys(alertStore).length >= 2000) {
+    return res.status(507).json({ error: "The alert registry is full." });
+  }
+  const entry = alertStore[device] || { fired: [], sub: null };
+  // Merge armed state: if either side has fired this alert, it stays
+  // disarmed until the condition clears (both sides re-arm on clear).
+  const prev = new Map((entry.alerts || []).map((a) => [`${a.id}:${a.field}:${a.op}:${a.value}`, a]));
+  for (const a of alerts) {
+    const p = prev.get(`${a.id}:${a.field}:${a.op}:${a.value}`);
+    if (p) a.armed = a.armed && p.armed;
+  }
+  entry.alerts = alerts;
+  entry.updatedAt = Date.now();
+  alertStore[device] = entry;
+  if (!alerts.length && !entry.fired.length && !entry.sub) delete alertStore[device];
+  saveAlerts();
+  res.json({ ok: true, alerts, fired: entry.fired || [], push: Boolean(vapidPublicKey) });
+});
+
+// Acknowledge fired alerts up to a timestamp (drops them from history).
+app.post("/api/ge/alerts/ack", (req, res) => {
+  const device = String(req.body?.device || "");
+  const upTo = Number(req.body?.upTo) || 0;
+  const entry = alertStore[device];
+  if (entry) {
+    entry.fired = (entry.fired || []).filter((f) => f.at > upTo);
+    saveAlerts();
+  }
+  res.json({ ok: true });
+});
+
+// Public VAPID key for push subscription (null = push unavailable).
+app.get("/api/push/key", (_req, res) => res.json({ key: vapidPublicKey }));
+
+// Store (or clear) a device's push subscription.
+app.post("/api/ge/alerts/subscribe", (req, res) => {
+  if (hiscoresLimited(req.ip)) return res.status(429).json({ error: "Slow down a touch." });
+  const device = String(req.body?.device || "");
+  if (!DEVICE_RE.test(device)) return res.status(400).json({ error: "Invalid device id." });
+  const sub = req.body?.subscription;
+  const valid = sub && typeof sub.endpoint === "string" && sub.endpoint.startsWith("https://") && sub.endpoint.length < 1000;
+  const entry = alertStore[device] || { alerts: [], fired: [] };
+  entry.sub = valid ? { endpoint: sub.endpoint, keys: sub.keys } : null;
+  entry.updatedAt = Date.now();
+  alertStore[device] = entry;
+  saveAlerts();
+  res.json({ ok: true, push: Boolean(entry.sub) });
+});
+
+const alertActual = (a, p) => {
+  const high = Number(p?.high), low = Number(p?.low);
+  if (a.field === "buy") return Number.isFinite(high) ? high : null;
+  if (a.field === "sell") return Number.isFinite(low) ? low : null;
+  return Number.isFinite(high) && Number.isFinite(low) ? high - low - geTax(high) : null;
+};
+
+async function evaluateAlerts() {
+  const devices = Object.entries(alertStore).filter(([, e]) => e.alerts && e.alerts.length);
+  if (!devices.length) return;
+  let latest;
+  try { latest = await getLatestAll(); } catch { return; } // upstream down — try next tick
+  let changed = false;
+
+  for (const [device, entry] of devices) {
+    // Expire devices idle for 30 days.
+    if (Date.now() - (entry.updatedAt || 0) > 30 * 86_400_000) {
+      delete alertStore[device];
+      changed = true;
+      continue;
+    }
+    for (const a of entry.alerts) {
+      const actual = alertActual(a, latest.data?.[String(a.id)]);
+      if (actual == null) continue;
+      const met = a.op === "lte" ? actual <= a.value : actual >= a.value;
+      if (met && a.armed) {
+        a.armed = false;
+        changed = true;
+        const fired = {
+          at: Date.now(), id: a.id, name: a.name, field: a.field, op: a.op, value: a.value, actual,
+          text: `${a.name}: ${a.field} is ${actual.toLocaleString("en-GB")} gp (${a.op === "lte" ? "≤" : "≥"} ${a.value.toLocaleString("en-GB")})`,
+        };
+        entry.fired = [...(entry.fired || []), fired].slice(-50);
+        if (webpush && entry.sub) {
+          webpush.sendNotification(entry.sub, JSON.stringify({ title: "RuneScribe — GE alert", body: fired.text }))
+            .catch((err) => {
+              // 404/410 = subscription expired; drop it.
+              if (err && (err.statusCode === 404 || err.statusCode === 410)) { entry.sub = null; saveAlerts(); }
+            });
+        }
+      } else if (!met && !a.armed) {
+        a.armed = true; // re-arm once the condition clears
+        changed = true;
+      }
+    }
+  }
+  if (changed) saveAlerts();
+}
+setInterval(() => { evaluateAlerts().catch(() => {}); }, Number(process.env.ALERT_POLL_MS) || 60_000);
 
 // Health check for uptime monitors and hosting platforms.
 app.get("/healthz", (_req, res) => {

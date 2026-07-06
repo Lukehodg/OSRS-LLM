@@ -129,6 +129,7 @@
           name: document.getElementById("clan-name").value,
           description: document.getElementById("clan-desc").value,
           discord: document.getElementById("clan-discord").value.trim(),
+          webhook: document.getElementById("clan-webhook").value.trim(),
           womGroupId: document.getElementById("clan-wom").value || undefined,
         }),
       });
@@ -157,7 +158,17 @@
     }
     panes.manage.innerHTML = mine.map((clan) => `
       <div class="clan manage" data-clan="${clan.id}">
-        <div class="clan-head"><span class="clan-name">${esc(clan.name)}</span></div>
+        <div class="clan-head">
+          <span class="clan-name">${esc(clan.name)}</span>
+          <span class="clan-hook${clan.hasWebhook ? " on" : ""}">${clan.hasWebhook ? "📣 announcements on" : "📣 no webhook"}</span>
+        </div>
+        <details class="clan-hook-set">
+          <summary>${clan.hasWebhook ? "Change or remove the Discord webhook" : "Announce events to Discord (add a webhook)"}</summary>
+          <form class="hook-form" data-hook="${clan.id}">
+            <input name="webhook" type="url" maxlength="200" placeholder="https://discord.com/api/webhooks/… (empty = off)" spellcheck="false" />
+            <button class="clans-btn" type="submit">Save</button>
+          </form>
+        </details>
         <form class="event-form" data-clan="${clan.id}">
           <select name="type">
             <option value="botw">⚔️ Boss of the Week</option>
@@ -166,6 +177,7 @@
           </select>
           <input name="target" type="text" maxlength="60" placeholder="boss / skill name" />
           <input name="theme" type="text" maxlength="160" placeholder="bingo theme (optional)" hidden />
+          <input name="teams" type="text" maxlength="200" placeholder="teams — e.g. Bandos, Zamorak (optional)" hidden />
           <select name="days">
             <option value="7">1 week</option><option value="3">3 days</option><option value="14">2 weeks</option>
           </select>
@@ -180,10 +192,12 @@
       const typeSel = form.querySelector("[name=type]");
       const target = form.querySelector("[name=target]");
       const theme = form.querySelector("[name=theme]");
+      const teams = form.querySelector("[name=teams]");
       const sync = () => {
         const bingo = typeSel.value === "bingo";
         target.hidden = bingo;
         theme.hidden = !bingo;
+        teams.hidden = !bingo;
       };
       typeSel.addEventListener("change", sync);
       sync();
@@ -201,6 +215,7 @@
               type: typeSel.value,
               target: target.value,
               theme: theme.value,
+              teams: teams.value,
               days: form.querySelector("[name=days]").value,
             }),
           });
@@ -208,6 +223,33 @@
           if (!r.ok) throw new Error(body.error || "failed");
           status.className = "clans-status ok";
           status.textContent = "event created.";
+          await loadClans();
+          renderManage();
+        } catch (err) {
+          status.className = "clans-status err";
+          status.textContent = err.message;
+        }
+      });
+    });
+
+    // webhook set/clear
+    panes.manage.querySelectorAll(".hook-form").forEach((form) => {
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const clanId = form.dataset.hook;
+        const status = panes.manage.querySelector(`[data-status="${clanId}"]`);
+        status.className = "clans-status";
+        status.textContent = "saving webhook…";
+        try {
+          const r = await fetch(`/api/clans/${clanId}/webhook`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Clan-Token": keys[clanId] },
+            body: JSON.stringify({ webhook: form.webhook.value.trim() }),
+          });
+          const body = await r.json();
+          if (!r.ok) throw new Error(body.error || "failed");
+          status.className = "clans-status ok";
+          status.textContent = body.hasWebhook ? "webhook saved — announcements on." : "webhook removed.";
           await loadClans();
           renderManage();
         } catch (err) {

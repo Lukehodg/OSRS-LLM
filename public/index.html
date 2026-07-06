@@ -194,6 +194,7 @@
             <button class="ge-rail-tab active" data-screen="mostTraded" type="button">Traded</button>
             <button class="ge-rail-tab" data-screen="bestFlips" type="button">Flips</button>
             <button class="ge-rail-tab" data-screen="watch" type="button">★ Watch</button>
+            <button class="ge-rail-tab" data-screen="port" type="button">Port</button>
           </div>
           <div id="ge-screen" class="ge-screen">
             <div class="ge-screen-loading">loading market…</div>
@@ -227,6 +228,7 @@
         <input id="clan-desc" type="text" maxlength="240" placeholder="One-line description (optional)" />
         <input id="clan-discord" type="url" maxlength="120" placeholder="Discord invite — https://discord.gg/… (optional)" spellcheck="false" />
         <input id="clan-wom" type="number" min="1" placeholder="Wise Old Man group id (optional)" />
+        <input id="clan-webhook" type="url" maxlength="200" placeholder="Discord webhook URL — announces events &amp; bingo claims (optional)" spellcheck="false" />
         <p class="clans-note">Find your group id in its wiseoldman.net URL: wiseoldman.net/groups/<b>1234</b>.
         Registering gives you a <b>clan key</b> (saved on this device) — you'll need it to manage events.</p>
         <button class="clans-btn primary" type="submit">Register clan</button>
@@ -275,6 +277,10 @@
           <div class="bhq-panel">
             <div class="bhq-panel-title">BINGO&nbsp;LINES</div>
             <div id="bhq-lines" class="bhq-lines"></div>
+          </div>
+          <div class="bhq-panel" id="bhq-teams-panel" hidden>
+            <div class="bhq-panel-title">TEAM&nbsp;STANDINGS</div>
+            <div id="bhq-teams"></div>
           </div>
           <div class="bhq-panel">
             <div class="bhq-panel-title">CONTRIBUTORS</div>

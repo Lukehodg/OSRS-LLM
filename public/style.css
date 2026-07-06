@@ -1191,6 +1191,31 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
 .ge-alert-row { cursor: default; }
 .ge-alert-row:hover { background: none; }
 
+/* Portfolio tab */
+.ge-port-summary {
+  display: grid; grid-template-columns: 1fr; gap: 6px;
+  padding: 8px 6px 4px;
+}
+.ge-port-summary .ge-cell { padding: 7px 10px; }
+.ge-port-row { cursor: default; gap: 7px; }
+.ge-port-row:hover { background: rgba(217, 192, 122, 0.04); }
+.ge-port-row .ge-row-name { cursor: pointer; }
+.ge-port-row .ge-row-name:hover { color: var(--gold-bright); }
+.ge-port-row.closed { opacity: 0.75; }
+.ge-port-lot {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-faint);
+  white-space: nowrap; flex: 0 0 auto;
+}
+.ge-port-row .ge-mini-btn { padding: 3px 8px; font-size: 10px; flex: 0 0 auto; }
+.ge-sell-form { margin: 2px 6px 6px; }
+.ge-sell-form input { max-width: 130px; }
+.ge-port-clear {
+  float: right; cursor: pointer; color: var(--text-faint);
+  border-bottom: 1px dotted var(--text-faint); letter-spacing: 1px;
+}
+.ge-port-clear:hover { color: #e0655a; }
+.ge-pos-x { color: var(--text-faint); font-family: var(--font-mono); }
+
 .ge-toasts {
   position: absolute; top: 58px; left: 50%; transform: translateX(-50%);
   z-index: 10; display: flex; flex-direction: column; gap: 8px; align-items: center;
@@ -1577,6 +1602,17 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
   position: absolute; top: 5px; right: 7px;
   font-size: 11px; color: #8fd48f;
 }
+.bhq-tile-team {
+  position: absolute; top: 4px; left: 6px;
+  max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.4px;
+  border: 1px solid; border-radius: 999px; padding: 1px 6px;
+  opacity: 0.9;
+}
+.bhq-team-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto;
+  align-self: center;
+}
 .bhq-tile.free .bhq-tile-badge { color: var(--gold-bright); }
 .bhq-legend {
   display: flex; gap: 16px; justify-content: center; margin-top: 11px;
@@ -1626,15 +1662,25 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
 }
 .bhq-d-claim b { color: var(--gold-bright); }
 .bhq-verified { color: #8fd48f; font-family: var(--font-mono); font-size: 11.5px; }
+.bhq-proof { display: block; margin: 4px 0; text-decoration: none; }
+.bhq-proof img {
+  max-width: 100%; max-height: 150px; display: block;
+  border: 1px solid var(--gold-line); border-radius: 7px;
+}
+.bhq-proof-link {
+  font-family: var(--font-mono); font-size: 11px; color: var(--gold);
+  border-bottom: 1px solid var(--gold-line);
+}
 .bhq-d-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .bhq-claim-form { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-.bhq-claim-form input {
+.bhq-claim-form input, .bhq-claim-form select {
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid var(--gold-faint); border-radius: 7px;
   color: var(--text); font-family: var(--font-body); font-size: 13.5px;
   padding: 8px 11px; outline: none;
 }
-.bhq-claim-form input:focus { border-color: var(--gold-dim); }
+.bhq-claim-form input:focus, .bhq-claim-form select:focus { border-color: var(--gold-dim); }
+.bhq-claim-form select option { background: #0d0d0b; }
 .bhq-d-status { margin-top: 6px; }
 
 /* Lines */
@@ -1670,6 +1716,12 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
 .bhq-feed-row small { font-family: var(--font-mono); font-size: 9.5px; color: var(--text-faint); white-space: nowrap; }
 
 /* Manage forms */
+.clan-hook { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); white-space: nowrap; }
+.clan-hook.on { color: #8fd48f; }
+.clan-hook-set { font-size: 13px; color: var(--text-dim); margin: 6px 0; }
+.clan-hook-set summary { cursor: pointer; color: var(--gold-dim); font-family: var(--font-body); }
+.hook-form { display: flex; gap: 8px; margin: 8px 0 4px; }
+.hook-form input { flex: 1; min-width: 0; }
 .event-form { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
 .event-form select { flex: 0 0 auto; }
 .event-form input { flex: 1; min-width: 140px; }
