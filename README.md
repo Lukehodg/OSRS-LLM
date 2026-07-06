@@ -66,7 +66,21 @@ A **Clans** constellation sits at the top of the chart. Any player can:
 
 - **Register a clan** — name + description, optionally linked to a **Discord invite** and/or a **[Wise Old Man](https://wiseoldman.net) group** (the group id is validated live and its name/member-count shown). Registration returns a **clan key**, saved on that device — only the key-holder can manage the clan's events.
 - **Run events** — *Boss of the Week*, *Skill of the Week*, or **Bingo**: a 5×5 board (free centre) generated on the spot — **AI-conjured to your theme** when an API key is configured ("mid-level ironman friendly", "raids week"…), from a built-in task pool otherwise. Up to 5 active events per clan, 1–30 day durations.
-- **Browse** — every registered clan with its links and live events (bingo boards render in full, with countdowns).
+- **Browse** — every registered clan with its links and live events; bingo events show a live mini-board and open into **Bingo HQ**.
+
+#### 🎲 Bingo HQ
+
+Every bingo event opens as a full-screen event dashboard in the star-chart theme:
+
+- **Tiles with points & sprites** — each of the 24 tasks carries a point value (harder = more) and its OSRS Wiki item sprite; the centre is a free ★ tile.
+- **Claims & verification** — any clan member claims a tile with their RSN (and an optional note); the **clan key-holder** verifies claims (◆) or removes bogus ones. Claimed tiles glow green, verified ones brighter.
+- **Stats strip** — points earned / possible, tiles completed with a progress bar, verified count, bingo lines.
+- **Bingo lines** — all 5 rows, 5 columns, both diagonals, four corners and blackout, tracked live.
+- **Contributors** — a points leaderboard of who's claimed what.
+- **Live activity** — a feed of every claim and verification, with a ticking countdown to event end.
+- **Filters** — All / Open / Claimed / Verified, plus a 45-second auto-refresh so the board stays live while open.
+
+AI-generated boards also get AI-assigned points and sprites (the model emits `task | points | wiki_image` per tile).
 
 Clans persist server-side in `data/clans.json` (single-instance JSON store — swap for a real DB when it outgrows that; the file is gitignored). Edit tokens never appear in public responses.
 

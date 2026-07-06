@@ -1,0 +1,317 @@
+/* Bingo HQ — full-screen clan bingo board in the star-chart theme.
+   Tiles carry points + wiki sprites; players claim tiles, the clan
+   key-holder verifies. Stats strip, tile detail, bingo lines, activity
+   feed and a contributor leaderboard. Opened from the Clan Hall. */
+
+(function () {
+  const root = document.getElementById("bingo");
+  if (!root) return;
+
+  const titleEl = document.getElementById("bhq-title");
+  const subEl = document.getElementById("bhq-sub");
+  const clockEl = document.getElementById("bhq-clock");
+  const filtersEl = document.getElementById("bhq-filters");
+  const statsEl = document.getElementById("bhq-stats");
+  const boardEl = document.getElementById("bhq-board");
+  const detailEl = document.getElementById("bhq-detail");
+  const linesEl = document.getElementById("bhq-lines");
+  const lbEl = document.getElementById("bhq-lb");
+  const feedEl = document.getElementById("bhq-feed");
+
+  const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const keys = () => { try { return JSON.parse(localStorage.getItem("wom.clan.keys")) || {}; } catch { return {}; } };
+
+  let clanId = null, eventId = null, clan = null, ev = null;
+  let selected = null, filter = "all";
+  let clockTimer = null, pollTimer = null;
+
+  // ---- open / close --------------------------------------------------------
+  window.openBingo = async function (cid, eid) {
+    clanId = cid; eventId = eid; selected = null; filter = "all";
+    setFilterUI();
+    root.hidden = false;
+    boardEl.innerHTML = `<div class="bhq-loading">unrolling the board…</div>`;
+    await refresh();
+    clearInterval(clockTimer); clockTimer = setInterval(tickClock, 1000);
+    clearInterval(pollTimer); pollTimer = setInterval(() => refresh(true), 45_000);
+  };
+  function close() {
+    root.hidden = true;
+    clearInterval(clockTimer); clearInterval(pollTimer);
+  }
+  root.addEventListener("click", (e) => { if (e.target.hasAttribute("data-bhq-dismiss")) close(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !root.hidden) close(); });
+
+  async function refresh(quiet) {
+    try {
+      const r = await fetch(`/api/clans/${clanId}`);
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error || "clan not found");
+      clan = body.clan;
+      ev = (clan.events || []).find((e) => e.id === eventId);
+      if (!ev || !ev.board) throw new Error("This bingo event no longer exists.");
+      render();
+    } catch (err) {
+      if (!quiet) boardEl.innerHTML = `<div class="bhq-loading">${esc(err.message)}</div>`;
+    }
+  }
+
+  // ---- model helpers -------------------------------------------------------
+  // Old boards stored plain strings; normalise every cell to an object.
+  const cellOf = (i) => {
+    const c = ev.board[i];
+    if (typeof c === "string") return { name: c, pts: 100, img: null, free: i === 12 };
+    return { name: c.name, pts: Number(c.pts) || 100, img: c.img || null, free: Boolean(c.free) || i === 12 };
+  };
+  const claimOf = (i) => (ev.claims && ev.claims[i]) || null;
+  const statusOf = (i) => cellOf(i).free ? "free" : claimOf(i) ? (claimOf(i).verified ? "verified" : "claimed") : "open";
+  const isDone = (i) => statusOf(i) !== "open";
+  const isManager = () => Boolean(keys()[clanId]);
+  const live = () => ev.endsAt > Date.now();
+
+  const LINES = (() => {
+    const rows = [0, 1, 2, 3, 4].map((r) => ({ name: `Row ${r + 1}`, cells: [0, 1, 2, 3, 4].map((c) => r * 5 + c) }));
+    const cols = [0, 1, 2, 3, 4].map((c) => ({ name: `Column ${c + 1}`, cells: [0, 1, 2, 3, 4].map((r) => r * 5 + c) }));
+    return rows.concat(cols, [
+      { name: "Diagonal ↘", cells: [0, 6, 12, 18, 24] },
+      { name: "Diagonal ↗", cells: [20, 16, 12, 8, 4] },
+      { name: "Four corners", cells: [0, 4, 20, 24] },
+      { name: "Blackout", cells: Array.from({ length: 25 }, (_, i) => i) },
+    ]);
+  })();
+
+  const wikiImg = (name) =>
+    `https://oldschool.runescape.wiki/w/Special:FilePath/${encodeURIComponent(name + ".png")}`;
+
+  const ago = (t) => {
+    const s = Math.max(1, Math.floor((Date.now() - t) / 1000));
+    if (s < 60) return `${s}s ago`;
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    return `${Math.floor(s / 86400)}d ago`;
+  };
+
+  function tickClock() {
+    if (!ev) return;
+    const ms = ev.endsAt - Date.now();
+    if (ms <= 0) { clockEl.textContent = "event finished"; clockEl.classList.add("over"); return; }
+    clockEl.classList.remove("over");
+    const d = Math.floor(ms / 86_400_000), h = Math.floor((ms % 86_400_000) / 3_600_000),
+          m = Math.floor((ms % 3_600_000) / 60_000), s = Math.floor((ms % 60_000) / 1000);
+    clockEl.textContent = (d > 0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m ${s}s`) + " remaining";
+  }
+
+  // ---- filters --------------------------------------------------------------
+  filtersEl.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-filter]");
+    if (!b) return;
+    filter = b.dataset.filter;
+    setFilterUI();
+    if (ev) renderBoard();
+  });
+  function setFilterUI() {
+    filtersEl.querySelectorAll("[data-filter]").forEach((b) =>
+      b.classList.toggle("active", b.dataset.filter === filter));
+  }
+  const matchesFilter = (i) => filter === "all" || statusOf(i) === filter ||
+    (filter === "verified" && statusOf(i) === "free");
+
+  // ---- render ---------------------------------------------------------------
+  function render() {
+    titleEl.textContent = `${clan.name} — Bingo`.toUpperCase();
+    subEl.textContent = ev.theme ? `“${ev.theme}”` : (ev.aiBoard ? "board conjured by the sage" : "");
+    tickClock();
+    renderStats();
+    renderBoard();
+    renderDetail();
+    renderLines();
+    renderLeaderboard();
+    renderFeed();
+  }
+
+  function renderStats() {
+    const claims = Object.keys(ev.claims || {});
+    const doneCount = claims.length + 1; // + free centre
+    const pts = claims.reduce((n, i) => n + cellOf(Number(i)).pts, 0) + cellOf(12).pts;
+    const maxPts = ev.board.reduce((n, _, i) => n + cellOf(i).pts, 0);
+    const verified = claims.filter((i) => ev.claims[i].verified).length;
+    const linesDone = LINES.filter((l) => l.cells.every(isDone)).length;
+    const pc = Math.round((doneCount / 25) * 100);
+    statsEl.innerHTML = `
+      <div class="bhq-stat"><span class="bhq-stat-v">${pts.toLocaleString()}</span><span class="bhq-stat-k">points · of ${maxPts.toLocaleString()}</span></div>
+      <div class="bhq-stat wide">
+        <span class="bhq-stat-v">${doneCount} / 25 <small>${pc}%</small></span>
+        <span class="bhq-stat-k">tiles completed</span>
+        <span class="bhq-bar"><span class="bhq-bar-fill"></span></span>
+      </div>
+      <div class="bhq-stat"><span class="bhq-stat-v">${verified}</span><span class="bhq-stat-k">verified</span></div>
+      <div class="bhq-stat"><span class="bhq-stat-v">${linesDone} / ${LINES.length}</span><span class="bhq-stat-k">bingo lines</span></div>`;
+    // Width via CSSOM — the CSP (rightly) blocks inline style attributes.
+    statsEl.querySelector(".bhq-bar-fill").style.width = `${pc}%`;
+  }
+
+  function renderBoard() {
+    boardEl.innerHTML = "";
+    for (let i = 0; i < 25; i++) {
+      const cell = cellOf(i);
+      const st = statusOf(i);
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = `bhq-tile ${st}${selected === i ? " selected" : ""}${matchesFilter(i) ? "" : " dimmed"}`;
+      el.title = cell.name;
+
+      const icon = document.createElement("span");
+      icon.className = "bhq-tile-icon";
+      if (cell.free) icon.textContent = "★";
+      else if (cell.img) {
+        const img = document.createElement("img");
+        img.alt = ""; img.loading = "lazy";
+        img.src = wikiImg(cell.img);
+        img.addEventListener("error", () => { icon.textContent = "✦"; });
+        icon.appendChild(img);
+      } else icon.textContent = "✦";
+
+      const name = document.createElement("span");
+      name.className = "bhq-tile-name";
+      name.textContent = cell.free ? "FREE TILE" : cell.name;
+
+      const pts = document.createElement("span");
+      pts.className = "bhq-tile-pts";
+      pts.textContent = `${cell.pts} pts`;
+
+      const badge = document.createElement("span");
+      badge.className = "bhq-tile-badge";
+      badge.textContent = st === "verified" ? "◆" : st === "claimed" ? "✓" : st === "free" ? "★" : "";
+
+      el.append(icon, name, pts, badge);
+      el.addEventListener("click", () => { selected = selected === i ? null : i; renderBoard(); renderDetail(); });
+      boardEl.appendChild(el);
+    }
+  }
+
+  function renderDetail() {
+    if (selected == null) {
+      detailEl.innerHTML = `<div class="bhq-panel-title">TILE DETAIL</div>
+        <div class="bhq-dim">Select a tile to see its points, claim it, or verify a claim.</div>`;
+      return;
+    }
+    const i = selected, cell = cellOf(i), claim = claimOf(i), st = statusOf(i);
+    const stLabel = { open: "available", claimed: "claimed — awaiting verification", verified: "verified ◆", free: "free tile ★" }[st];
+    let html = `<div class="bhq-panel-title">TILE DETAIL</div>
+      <div class="bhq-d-head">
+        <span class="bhq-d-icon">${cell.img ? `<img src="${esc(wikiImg(cell.img))}" alt="">` : (cell.free ? "★" : "✦")}</span>
+        <div><div class="bhq-d-name">${esc(cell.name)}</div>
+        <div class="bhq-d-meta"><b>${cell.pts} pts</b> · <span class="bhq-st ${st}">${stLabel}</span></div></div>
+      </div>`;
+
+    if (claim) {
+      html += `<div class="bhq-d-claim">
+        <div>Claimed by <b>${esc(claim.player)}</b> · ${ago(claim.at)}</div>
+        ${claim.note ? `<div class="bhq-dim">“${esc(claim.note)}”</div>` : ""}
+        ${claim.verified ? `<div class="bhq-verified">◆ verified by the clan leader</div>` : `<div class="bhq-dim">screenshot proof goes to your clan's Discord</div>`}
+      </div>`;
+      if (isManager()) {
+        html += `<div class="bhq-d-actions">
+          <button class="clans-btn primary" data-act="verify" type="button">${claim.verified ? "Unverify" : "◆ Verify claim"}</button>
+          <button class="clans-btn ghost" data-act="unclaim" type="button">Remove claim</button>
+        </div>`;
+      }
+    } else if (cell.free) {
+      html += `<div class="bhq-dim">The centre is everyone's — it counts toward every line.</div>`;
+    } else if (live()) {
+      const acct = window.WOM && window.WOM.account;
+      html += `<form class="bhq-claim-form" data-act="claim">
+        <input name="player" type="text" maxlength="20" placeholder="your RSN" spellcheck="false"
+               value="${esc(acct ? acct.player : "")}" />
+        <input name="note" type="text" maxlength="120" placeholder="note — e.g. got it 3rd kill (optional)" />
+        <button class="clans-btn primary" type="submit">Claim tile</button>
+      </form>`;
+    } else {
+      html += `<div class="bhq-dim">The event has ended — no more claims.</div>`;
+    }
+    html += `<div class="bhq-d-status" id="bhq-d-status"></div>`;
+    detailEl.innerHTML = html;
+
+    // Sprite fallback (CSP forbids inline handlers).
+    const dImg = detailEl.querySelector(".bhq-d-icon img");
+    if (dImg) dImg.addEventListener("error", () => { dImg.parentElement.textContent = "✦"; });
+
+    const status = detailEl.querySelector("#bhq-d-status");
+    const form = detailEl.querySelector("[data-act=claim]");
+    if (form) form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      await act("claim", { tile: i, player: form.player.value.trim(), note: form.note.value.trim() }, status);
+    });
+    const vBtn = detailEl.querySelector("[data-act=verify]");
+    if (vBtn) vBtn.addEventListener("click", () => act("verify", { tile: i }, status));
+    const uBtn = detailEl.querySelector("[data-act=unclaim]");
+    if (uBtn) uBtn.addEventListener("click", () => act("unclaim", { tile: i }, status));
+  }
+
+  async function act(kind, payload, status) {
+    status.textContent = "…";
+    status.className = "clans-status";
+    const token = keys()[clanId];
+    try {
+      let r;
+      if (kind === "claim") {
+        r = await fetch(`/api/clans/${clanId}/events/${eventId}/claim`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } else if (kind === "verify") {
+        r = await fetch(`/api/clans/${clanId}/events/${eventId}/verify`, {
+          method: "POST", headers: { "Content-Type": "application/json", "X-Clan-Token": token },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        r = await fetch(`/api/clans/${clanId}/events/${eventId}/claim/${payload.tile}`, {
+          method: "DELETE", headers: { "X-Clan-Token": token },
+        });
+      }
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error || "that didn't work");
+      ev = body.event;
+      render();
+    } catch (err) {
+      status.className = "clans-status err";
+      status.textContent = err.message;
+    }
+  }
+
+  function renderLines() {
+    linesEl.innerHTML = LINES.map((l) => {
+      const done = l.cells.filter(isDone).length;
+      const complete = done === l.cells.length;
+      return `<div class="bhq-line${complete ? " done" : ""}">
+        <span>${complete ? "✦" : "·"} ${esc(l.name)}</span>
+        <b>${done}/${l.cells.length}</b></div>`;
+    }).join("");
+  }
+
+  function renderLeaderboard() {
+    const by = {};
+    for (const [i, c] of Object.entries(ev.claims || {})) {
+      const k = c.player;
+      by[k] = by[k] || { pts: 0, tiles: 0, verified: 0 };
+      by[k].pts += cellOf(Number(i)).pts;
+      by[k].tiles += 1;
+      if (c.verified) by[k].verified += 1;
+    }
+    const rows = Object.entries(by).sort((a, b) => b[1].pts - a[1].pts).slice(0, 8);
+    lbEl.innerHTML = rows.length
+      ? rows.map(([p, s], n) =>
+          `<div class="bhq-lb-row"><span class="bhq-lb-rank">#${n + 1}</span>
+           <span class="bhq-lb-name">${esc(p)}</span>
+           <span class="bhq-lb-sub">${s.tiles} tile${s.tiles === 1 ? "" : "s"}${s.verified ? ` · ${s.verified}◆` : ""}</span>
+           <b>${s.pts.toLocaleString()}</b></div>`).join("")
+      : `<div class="bhq-dim">No claims yet — first tile takes the lead.</div>`;
+  }
+
+  function renderFeed() {
+    const items = (ev.activity || []).slice(-12).reverse();
+    feedEl.innerHTML = items.length
+      ? items.map((a) => `<div class="bhq-feed-row"><span>${esc(a.text)}</span><small>${ago(a.at)}</small></div>`).join("")
+      : `<div class="bhq-dim">Quiet so far. Claims will appear here.</div>`;
+  }
+})();

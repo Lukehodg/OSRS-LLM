@@ -237,6 +237,58 @@
     </div>
   </div>
 
+  <!-- Bingo HQ (opened from the Clan Hall) -->
+  <div id="bingo" class="bhq" hidden role="dialog" aria-modal="true" aria-label="Clan bingo board">
+    <div class="bhq-backdrop" data-bhq-dismiss></div>
+    <div class="bhq-card">
+      <header class="bhq-top">
+        <span class="bhq-brand">🎲
+          <span class="bhq-brand-text">
+            <span id="bhq-title">CLAN&nbsp;BINGO</span>
+            <span id="bhq-sub" class="bhq-brand-sub"></span>
+          </span>
+        </span>
+        <span id="bhq-clock" class="bhq-clock">—</span>
+        <div class="bhq-filters" id="bhq-filters" role="tablist">
+          <button class="bhq-filter active" data-filter="all" type="button">All</button>
+          <button class="bhq-filter" data-filter="open" type="button">Open</button>
+          <button class="bhq-filter" data-filter="claimed" type="button">Claimed</button>
+          <button class="bhq-filter" data-filter="verified" type="button">Verified</button>
+        </div>
+        <button class="bhq-x" title="Close" aria-label="Close" data-bhq-dismiss>✕</button>
+      </header>
+
+      <div id="bhq-stats" class="bhq-stats"></div>
+
+      <div class="bhq-body">
+        <section class="bhq-boardwrap">
+          <div id="bhq-board" class="bhq-board"></div>
+          <div class="bhq-legend">
+            <span><i class="dot open"></i> available</span>
+            <span><i class="dot claimed"></i> claimed</span>
+            <span><i class="dot verified"></i> verified</span>
+            <span><i class="dot free"></i> free</span>
+          </div>
+        </section>
+        <aside class="bhq-rail">
+          <div class="bhq-panel" id="bhq-detail"></div>
+          <div class="bhq-panel">
+            <div class="bhq-panel-title">BINGO&nbsp;LINES</div>
+            <div id="bhq-lines" class="bhq-lines"></div>
+          </div>
+          <div class="bhq-panel">
+            <div class="bhq-panel-title">CONTRIBUTORS</div>
+            <div id="bhq-lb"></div>
+          </div>
+          <div class="bhq-panel">
+            <div class="bhq-panel-title">LIVE&nbsp;ACTIVITY</div>
+            <div id="bhq-feed"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
   <!-- Link Account -->
   <div id="acct" class="acct" hidden role="dialog" aria-modal="true" aria-label="Link your account">
     <div class="acct-backdrop" data-acct-dismiss></div>
@@ -322,6 +374,7 @@
   <script src="pickers.js"></script>
   <script src="ge.js"></script>
   <script src="clans.js"></script>
+  <script src="bingo.js"></script>
   <script src="account.js"></script>
 </body>
 </html>

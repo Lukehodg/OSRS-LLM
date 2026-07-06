@@ -31,7 +31,15 @@
   // ---- open/close + tabs ----
   function open() { panel.hidden = false; setTab("browse"); loadClans(); }
   function close() { panel.hidden = true; }
-  panel.addEventListener("click", (e) => { if (e.target.hasAttribute("data-clans-dismiss")) close(); });
+  panel.addEventListener("click", (e) => {
+    if (e.target.hasAttribute("data-clans-dismiss")) return close();
+    const b = e.target.closest("[data-bingo]");
+    if (b && window.openBingo) {
+      const [cid, eid] = b.dataset.bingo.split(":");
+      close();
+      window.openBingo(cid, eid);
+    }
+  });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) close(); });
 
   function setTab(name) {
@@ -59,9 +67,21 @@
     const live = ev.endsAt > Date.now();
     let body = "";
     if (ev.type === "bingo" && ev.board) {
-      body = `<div class="bingo">` + ev.board.map((t, i) =>
-        `<div class="bingo-cell${i === 12 ? " free" : ""}" title="${esc(t)}">${esc(t)}</div>`).join("") + `</div>` +
-        (ev.aiBoard ? `<div class="clans-note">✦ board conjured by the sage</div>` : "");
+      const cells = ev.board.map((t, i) => {
+        const name = typeof t === "string" ? t : t.name;
+        const claim = ev.claims && ev.claims[i];
+        const st = i === 12 ? "free" : claim ? (claim.verified ? "verified" : "claimed") : "";
+        return `<div class="bingo-mini-cell ${st}" title="${esc(name)}"></div>`;
+      }).join("");
+      const done = ev.claims ? Object.keys(ev.claims).length + 1 : 1;
+      body = `<div class="bingo-mini-row">
+        <div class="bingo-mini">${cells}</div>
+        <div class="bingo-mini-info">
+          <div class="bingo-mini-count"><b>${done}</b>/25 tiles</div>
+          ${ev.aiBoard ? `<div class="clans-note">✦ conjured by the sage</div>` : ""}
+          <button class="clans-btn primary" data-bingo="${clan.id}:${ev.id}" type="button">Open board ⌁</button>
+        </div>
+      </div>`;
     }
     return `<div class="event${live ? "" : " over"}">
       <div class="event-head">

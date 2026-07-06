@@ -988,22 +988,48 @@ const publicClan = ({ token, ...c }) => c; // never leak edit tokens
 
 const clean = (s, max) => (typeof s === "string" ? s.trim().slice(0, max) : "");
 
-// Task pool for non-AI bingo boards.
+// Task pool for non-AI bingo boards. Each tile carries points and (where an
+// obvious item exists) the OSRS Wiki file name of its sprite.
 const BINGO_POOL = [
-  "Get a Barrows unique", "Hit a 40+ with any weapon", "Complete a Slayer task of 150+",
-  "Get a fire cape or kill Jad", "Obtain 100k from thieving", "Catch 50 anglerfish",
-  "Get any boss pet chance (50 KC at one boss)", "Complete 3 clue scrolls (any tier)",
-  "Get a Zulrah unique", "Smith 500 cannonballs", "Get a champion scroll... or 100 KC at GWD",
-  "Gain 250k XP in any skill", "Get a dragon defender", "Loot 20 brimstone chests",
-  "Complete a raid (CoX/ToB/ToA)", "Get a Vorkath head or 25 KC", "Mix 100 prayer potions",
-  "Obtain a slayer helm upgrade", "Win a game of LMS or 5 Wintertodt crates",
-  "Get 3 Barbarian Assault waves done", "Catch a big fish (any big bass/swordfish/shark)",
-  "Get a Wilderness boss kill", "Runecraft 500 blood runes", "Obtain any godsword shard",
-  "Get a Kraken or Cerberus unique", "Plant and harvest 5 herb runs", "Get a CG armour seed or 10 KC",
-  "Obtain a visage or draconic drop", "Complete 5 Mahogany Homes contracts", "Get a ToA purple or 3 completions",
-  "Gain a combat level", "Get any skilling pet chance (50k XP block)", "Kill 50 abyssal demons",
-  "Get an elite clue casket", "Obtain 500k GP of loot from any boss", "Do 10 farming contracts",
+  { name: "Get a Barrows unique", pts: 300, img: "Dharok's helm" },
+  { name: "Hit a 40+ with any weapon", pts: 100, img: "Armadyl godsword" },
+  { name: "Complete a Slayer task of 150+", pts: 150, img: "Slayer helmet" },
+  { name: "Get a fire cape or kill Jad", pts: 400, img: "Fire cape" },
+  { name: "Obtain 100k from thieving", pts: 100, img: "Coins 10000" },
+  { name: "Catch 50 anglerfish", pts: 150, img: "Anglerfish" },
+  { name: "Reach 50 KC at any boss", pts: 200, img: "Pet dark core" },
+  { name: "Complete 3 clue scrolls (any tier)", pts: 200, img: "Clue scroll (elite)" },
+  { name: "Get a Zulrah unique", pts: 350, img: "Tanzanite fang" },
+  { name: "Smith 500 cannonballs", pts: 100, img: "Cannonball" },
+  { name: "Champion scroll or 100 GWD KC", pts: 250, img: "Champion scroll" },
+  { name: "Gain 250k XP in any skill", pts: 200, img: null },
+  { name: "Get a dragon defender", pts: 150, img: "Dragon defender" },
+  { name: "Loot 20 brimstone chests", pts: 200, img: "Brimstone key" },
+  { name: "Complete a raid (CoX/ToB/ToA)", pts: 400, img: "Dexterous prayer scroll" },
+  { name: "Get a Vorkath head or 25 KC", pts: 250, img: "Vorkath's head" },
+  { name: "Mix 100 prayer potions", pts: 100, img: "Prayer potion(4)" },
+  { name: "Obtain a slayer helm upgrade", pts: 200, img: "Slayer helmet (i)" },
+  { name: "Win LMS or open 5 Wintertodt crates", pts: 150, img: "Supply crate" },
+  { name: "Get 3 Barbarian Assault waves done", pts: 150, img: "Fighter torso" },
+  { name: "Catch a big fish (bass/sword/shark)", pts: 100, img: "Big swordfish" },
+  { name: "Get a Wilderness boss kill", pts: 250, img: "Dragon pickaxe" },
+  { name: "Runecraft 500 blood runes", pts: 150, img: "Blood rune" },
+  { name: "Obtain any godsword shard", pts: 300, img: "Godsword shard 1" },
+  { name: "Get a Kraken or Cerberus unique", pts: 300, img: "Trident of the seas" },
+  { name: "Plant and harvest 5 herb runs", pts: 100, img: "Ranarr seed" },
+  { name: "Get a CG armour seed or 10 KC", pts: 400, img: "Crystal armour seed" },
+  { name: "Obtain a visage or draconic drop", pts: 500, img: "Draconic visage" },
+  { name: "Complete 5 Mahogany Homes contracts", pts: 100, img: "Saw" },
+  { name: "Get a ToA purple or 3 completions", pts: 400, img: "Osmumten's fang" },
+  { name: "Gain a combat level", pts: 100, img: null },
+  { name: "Skilling pet chance (50k XP block)", pts: 150, img: "Heron" },
+  { name: "Kill 50 abyssal demons", pts: 150, img: "Abyssal whip" },
+  { name: "Get an elite clue casket", pts: 250, img: "Reward casket (elite)" },
+  { name: "Obtain 500k GP of loot from any boss", pts: 250, img: "Coins 10000" },
+  { name: "Do 10 farming contracts", pts: 200, img: "Seed pack" },
 ];
+
+const FREE_TILE = { name: "FREE", pts: 50, img: null, free: true };
 
 function makeBingoBoard(tasks) {
   const pool = [...tasks];
@@ -1012,25 +1038,39 @@ function makeBingoBoard(tasks) {
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
   const board = pool.slice(0, 24);
-  board.splice(12, 0, "FREE ✦");
+  board.splice(12, 0, { ...FREE_TILE });
   return board;
 }
 
-// AI-generated themed bingo tasks; falls back to the built-in pool.
+// AI-generated themed bingo tiles; falls back to the built-in pool.
 async function generateBingoTasks(theme) {
   try {
     const msg = await client.messages.create({
       model: MODEL,
-      max_tokens: 1200,
+      max_tokens: 1600,
       system:
-        "You create Old School RuneScape clan bingo tasks. Reply with EXACTLY 24 lines, one task per line, " +
-        "no numbering, no commentary. Tasks must be verifiable via screenshot, achievable within a week of " +
+        "You create Old School RuneScape clan bingo tiles. Reply with EXACTLY 24 lines, one tile per line, " +
+        "formatted as: task | points | wiki_image\n" +
+        "- points: an integer 50-500; harder or rarer tasks are worth more.\n" +
+        "- wiki_image: the exact OSRS Wiki file name (no .png) of an item icon that represents the task " +
+        "(e.g. Abyssal whip, Fire cape, Prayer potion(4)), or - if nothing fits.\n" +
+        "No numbering, no commentary. Tasks must be verifiable via screenshot, achievable within a week of " +
         "casual play, varied across PvM/skilling/clues/minigames, and ironman-friendly (no 'buy X').",
-      messages: [{ role: "user", content: `Create 24 bingo tasks${theme ? ` with this theme/difficulty guidance: ${theme}` : ""}.` }],
+      messages: [{ role: "user", content: `Create 24 bingo tiles${theme ? ` with this theme/difficulty guidance: ${theme}` : ""}.` }],
     });
     const text = msg.content.find((b) => b.type === "text")?.text || "";
-    const lines = text.split("\n").map((l) => l.replace(/^[\s\-\d.)]+/, "").trim()).filter((l) => l.length > 4);
-    if (lines.length >= 20) return lines.slice(0, 24);
+    const tiles = text.split("\n")
+      .map((l) => l.replace(/^[\s\-\d.)]+/, "").trim())
+      .filter(Boolean)
+      .map((l) => {
+        const [name, ptsRaw, imgRaw] = l.split("|").map((p) => (p || "").trim());
+        if (!name || name.length < 5) return null;
+        const pts = Math.min(Math.max(Math.round(Number(ptsRaw)) || 150, 50), 1000);
+        const img = imgRaw && imgRaw !== "-" ? imgRaw.replace(/\.png$/i, "").slice(0, 60) : null;
+        return { name: name.slice(0, 90), pts, img };
+      })
+      .filter(Boolean);
+    if (tiles.length >= 20) return tiles.slice(0, 24);
   } catch { /* fall through to pool */ }
   return null;
 }
@@ -1145,12 +1185,98 @@ app.post("/api/clans/:id/events", async (req, res) => {
     id: crypto.randomBytes(5).toString("hex"),
     type, target: target || null, theme: theme || null,
     board, aiBoard,
+    claims: type === "bingo" ? {} : undefined,
+    activity: type === "bingo" ? [] : undefined,
     startsAt: Date.now(),
     endsAt: Date.now() + days * 86_400_000,
   };
   clan.events.push(event);
   saveClans();
   res.status(201).json({ event });
+});
+
+// ---- Bingo claims & verification -----------------------------------------
+
+function findBingo(req, res) {
+  const clan = clans.find((c) => c.id === req.params.id);
+  if (!clan) { res.status(404).json({ error: "No such clan." }); return null; }
+  const ev = (clan.events || []).find((e) => e.id === req.params.eventId);
+  if (!ev || ev.type !== "bingo" || !ev.board) {
+    res.status(404).json({ error: "No such bingo event." });
+    return null;
+  }
+  ev.claims = ev.claims || {};
+  ev.activity = ev.activity || [];
+  return { clan, ev };
+}
+
+const tileName = (ev, i) => {
+  const cell = ev.board[i];
+  return typeof cell === "string" ? cell : (cell && cell.name) || `tile ${i + 1}`;
+};
+
+function logActivity(ev, text) {
+  ev.activity.push({ at: Date.now(), text: String(text).slice(0, 180) });
+  if (ev.activity.length > 40) ev.activity = ev.activity.slice(-40);
+}
+
+// Claim a tile — open to any clan member viewing the board (the key-holder
+// verifies or removes claims, so griefing is reversible).
+app.post("/api/clans/:id/events/:eventId/claim", (req, res) => {
+  if (hiscoresLimited(req.ip)) return res.status(429).json({ error: "Slow down a touch." });
+  const found = findBingo(req, res);
+  if (!found) return;
+  const { ev } = found;
+  if (ev.endsAt <= Date.now()) return res.status(400).json({ error: "This event has ended." });
+
+  const tile = Number(req.body?.tile);
+  if (!Number.isInteger(tile) || tile < 0 || tile > 24) {
+    return res.status(400).json({ error: "Invalid tile." });
+  }
+  if (tile === 12) return res.status(400).json({ error: "The centre tile is free — no claim needed." });
+  const player = clean(req.body?.player, 20);
+  const note = clean(req.body?.note, 120);
+  if (!player) return res.status(400).json({ error: "Who claims it? Add your name." });
+  if (ev.claims[tile]) return res.status(409).json({ error: "That tile is already claimed." });
+
+  ev.claims[tile] = { player, note: note || null, at: Date.now(), verified: false };
+  logActivity(ev, `${player} claimed “${tileName(ev, tile)}”`);
+  saveClans();
+  res.status(201).json({ event: ev });
+});
+
+// Verify (or unverify) a claim — key-holder only.
+app.post("/api/clans/:id/events/:eventId/verify", (req, res) => {
+  const clan = authClan(req, res);
+  if (!clan) return;
+  const found = findBingo(req, res);
+  if (!found) return;
+  const { ev } = found;
+  const tile = Number(req.body?.tile);
+  const claim = ev.claims[tile];
+  if (!claim) return res.status(404).json({ error: "No claim on that tile." });
+  claim.verified = !claim.verified;
+  logActivity(ev, claim.verified
+    ? `✦ verified ${claim.player}'s “${tileName(ev, tile)}”`
+    : `verification removed from “${tileName(ev, tile)}”`);
+  saveClans();
+  res.json({ event: ev });
+});
+
+// Remove a claim — key-holder only.
+app.delete("/api/clans/:id/events/:eventId/claim/:tile", (req, res) => {
+  const clan = authClan(req, res);
+  if (!clan) return;
+  const found = findBingo(req, res);
+  if (!found) return;
+  const { ev } = found;
+  const tile = Number(req.params.tile);
+  const claim = ev.claims[tile];
+  if (!claim) return res.status(404).json({ error: "No claim on that tile." });
+  delete ev.claims[tile];
+  logActivity(ev, `claim on “${tileName(ev, tile)}” was removed`);
+  saveClans();
+  res.json({ event: ev });
 });
 
 // Remove an event.
