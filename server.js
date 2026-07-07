@@ -13,7 +13,7 @@ const app = express();
 
 // Security headers. The CSP allows exactly what the app uses: same-origin
 // scripts/requests, Google Fonts, and OSRS Wiki images.
-app.use((_req, res, next) => {
+app.use((req, res, next) => {
   res.set({
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
@@ -31,6 +31,11 @@ app.use((_req, res, next) => {
       "frame-ancestors 'none'",
     ].join("; "),
   });
+  // Tell browsers to stick to HTTPS once we're actually served over it
+  // (ignored over plain HTTP, so local dev is unaffected).
+  if (req.secure || req.headers["x-forwarded-proto"] === "https") {
+    res.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
   next();
 });
 
@@ -2206,6 +2211,23 @@ function flushStoresAndExit() {
 }
 process.on("SIGINT", flushStoresAndExit);
 process.on("SIGTERM", flushStoresAndExit);
+
+// Catch-all Express error handler: never leak internals or a stack trace to
+// the client, and never let a route error take the process down.
+app.use((err, req, res, _next) => {
+  console.error("route error:", req.method, req.path, err && err.message);
+  if (res.headersSent) return;
+  res.status(500).json({ error: "Something went wrong on our end." });
+});
+
+// Keep the site up if a stray async error escapes a handler — log it, don't
+// crash. All request paths already have their own try/catch; this is the net.
+process.on("unhandledRejection", (reason) => {
+  console.error("unhandledRejection:", reason && (reason.message || reason));
+});
+process.on("uncaughtException", (err) => {
+  console.error("uncaughtException:", err && (err.message || err));
+});
 
 app.listen(PORT, () => {
   console.log(`RuneScribe is listening on http://localhost:${PORT}`);
