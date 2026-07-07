@@ -91,6 +91,7 @@
       <div class="event-head">
         <span class="event-type">${meta.icon} ${meta.label}${ev.target ? ` — <b>${esc(ev.target)}</b>` : ""}</span>
         <span class="event-when">${live ? fmtLeft(ev.endsAt - Date.now()) : "finished"}</span>
+        ${manage && live ? `<button class="event-close" data-close="${clan.id}:${ev.id}" title="End this event now">⏹ End</button>` : ""}
         ${manage ? `<button class="event-x" data-del="${clan.id}:${ev.id}" title="Remove event">✕</button>` : ""}
       </div>${body}</div>`;
   }
@@ -292,9 +293,24 @@
       });
     });
 
-    // deletes
+    // close (end early — keeps the event and its results)
+    panes.manage.querySelectorAll("[data-close]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("End this event now? It stays listed with its final results, but no more claims.")) return;
+        const [clanId, eventId] = btn.dataset.close.split(":");
+        await fetch(`/api/clans/${clanId}/events/${eventId}/close`, {
+          method: "POST",
+          headers: { "X-Clan-Token": keys[clanId] },
+        }).catch(() => {});
+        await loadClans();
+        renderManage();
+      });
+    });
+
+    // deletes (remove the event entirely)
     panes.manage.querySelectorAll("[data-del]").forEach((btn) => {
       btn.addEventListener("click", async () => {
+        if (!confirm("Remove this event entirely? This can't be undone.")) return;
         const [clanId, eventId] = btn.dataset.del.split(":");
         await fetch(`/api/clans/${clanId}/events/${eventId}`, {
           method: "DELETE",

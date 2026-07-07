@@ -1591,6 +1591,54 @@ app.delete("/api/clans/:id/events/:eventId/claim/:tile", (req, res) => {
 });
 
 // Remove an event.
+// Final standings for a closed bingo — used in the close announcement.
+function bingoResult(ev) {
+  if (ev.type !== "bingo" || !ev.board) return "";
+  const ptsOf = (i) => {
+    const c = ev.board[i];
+    return typeof c === "object" && c ? Number(c.pts) || 0 : 0;
+  };
+  const claims = ev.claims || {};
+  if (ev.teams && ev.members) {
+    const scores = ev.teams.map((t) => {
+      let pts = 0;
+      for (const [i, c] of Object.entries(claims)) if (c.team === t) pts += ptsOf(Number(i));
+      return { t, pts };
+    }).sort((a, b) => b.pts - a.pts);
+    if (!scores.length || scores[0].pts === 0) return "No tiles were claimed.";
+    const tie = scores[1] && scores[1].pts === scores[0].pts;
+    return tie
+      ? `It's a tie on ${scores[0].pts} pts!`
+      : `🏆 **${scores[0].t}** win with ${scores[0].pts} pts!`;
+  }
+  const by = {};
+  for (const [i, c] of Object.entries(claims)) by[c.player] = (by[c.player] || 0) + ptsOf(Number(i));
+  const top = Object.entries(by).sort((a, b) => b[1] - a[1])[0];
+  return top ? `🏆 Top contributor: **${top[0]}** (${top[1]} pts).` : "No tiles were claimed.";
+}
+
+// Close an event early — key-holder only. Keeps the board and results; just
+// stops new claims/signups and marks it finished (vs. DELETE, which removes it).
+app.post("/api/clans/:id/events/:eventId/close", (req, res) => {
+  const clan = authClan(req, res);
+  if (!clan) return;
+  const ev = (clan.events || []).find((e) => e.id === req.params.eventId);
+  if (!ev) return res.status(404).json({ error: "No such event." });
+  if (ev.endsAt <= Date.now()) return res.status(400).json({ error: "This event has already finished." });
+
+  ev.endsAt = Date.now();
+  ev.closed = true;
+  if (ev.type === "bingo") {
+    ev.activity = ev.activity || [];
+    logActivity(ev, "🏁 the organiser closed the bingo");
+  }
+  saveClans();
+
+  const label = ev.type === "bingo" ? "bingo" : ev.type === "botw" ? `Boss of the Week${ev.target ? ` (${ev.target})` : ""}` : `Skill of the Week${ev.target ? ` (${ev.target})` : ""}`;
+  announce(clan, `🏁 **${clan.name}** closed their ${label}. ${bingoResult(ev)}`.trim());
+  res.json({ event: ev });
+});
+
 app.delete("/api/clans/:id/events/:eventId", (req, res) => {
   const clan = authClan(req, res);
   if (!clan) return;

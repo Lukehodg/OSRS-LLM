@@ -86,6 +86,7 @@ Every bingo event opens as a full-screen event dashboard in the star-chart theme
 - **Contributors** — a points leaderboard of who's claimed what.
 - **Live activity** — a feed of every claim and verification, with a ticking countdown to event end.
 - **Filters** — All / Open / Claimed / Verified, plus a 45-second auto-refresh so the board stays live while open.
+- **End it early** — the organiser (clan key-holder) can **End bingo** from the board header at any time (or *End* an event from the Clan Hall's *My events* list). Closing stops new claims and sign-ups but keeps the board, standings and the **winner** on display (top team, or top contributor for solo boards), and posts the result to Discord. Distinct from *Remove*, which deletes the event entirely.
 
 AI-generated boards also get AI-assigned points and sprites (the model emits `task | points | wiki_image` per tile).
 

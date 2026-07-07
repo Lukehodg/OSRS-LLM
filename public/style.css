@@ -1429,6 +1429,12 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
   background: none; border: none; color: var(--text-faint); cursor: pointer; font-size: 12px;
 }
 .event-x:hover { color: #e0655a; }
+.event-close {
+  background: none; border: 1px solid rgba(213, 71, 63, 0.35); border-radius: 999px;
+  color: var(--ember); cursor: pointer;
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.5px; padding: 2px 8px;
+}
+.event-close:hover { color: #fff; background: var(--ember); border-color: var(--ember); }
 
 /* Bingo — compact preview inside a clan card */
 .bingo-mini-row { display: flex; align-items: center; gap: 14px; margin-top: 9px; }
@@ -1525,6 +1531,17 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
   color: var(--text-faint); font-size: 14px; cursor: pointer; padding: 4px 8px;
 }
 .bhq-x:hover { color: var(--gold-bright); }
+.bhq-end {
+  align-self: center;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.8px;
+  color: var(--ember); background: none;
+  border: 1px solid rgba(213, 71, 63, 0.4); border-radius: 999px;
+  padding: 4px 11px; cursor: pointer; white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.bhq-end:hover { color: #fff; background: var(--ember); border-color: var(--ember); }
+.bhq-end[hidden] { display: none; }
+.bhq-end:disabled { opacity: 0.5; cursor: default; }
 
 /* Stats — one engraved instrument row, hairline-ruled, no boxes */
 .bhq-stats {

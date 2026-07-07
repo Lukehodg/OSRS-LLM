@@ -10,6 +10,7 @@
   const titleEl = document.getElementById("bhq-title");
   const subEl = document.getElementById("bhq-sub");
   const clockEl = document.getElementById("bhq-clock");
+  const endBtn = document.getElementById("bhq-end");
   const filtersEl = document.getElementById("bhq-filters");
   const statsEl = document.getElementById("bhq-stats");
   const boardEl = document.getElementById("bhq-board");
@@ -177,8 +178,11 @@
   function render() {
     titleEl.textContent = `${clan.name} — Bingo`.toUpperCase();
     const styleLabel = { "pvm-high": "high-level PvM", "pvm-mid": "mid-level PvM", "pvm-low": "low-level PvM" }[ev.style];
-    subEl.textContent = [ev.theme ? `“${ev.theme}”` : "", styleLabel].filter(Boolean).join(" · ")
+    const base = [ev.theme ? `“${ev.theme}”` : "", styleLabel].filter(Boolean).join(" · ")
       || (ev.aiBoard ? "board conjured by the sage" : "");
+    subEl.textContent = live() ? base : [ev.closed ? "🏁 closed by the organiser" : "🏁 finished", winnerLine()].filter(Boolean).join(" · ") || base;
+    // Manager-only "End bingo" — visible while the event is still live.
+    endBtn.hidden = !(isManager() && live());
     tickClock();
     setFilterUI();
     renderStats();
@@ -190,6 +194,48 @@
     renderLeaderboard();
     renderFeed();
   }
+
+  // Winner summary for a finished bingo (top team, or top contributor).
+  function winnerLine() {
+    const claims = ev.claims || {};
+    if (ev.teams && ev.members) {
+      const scores = ev.teams.map((t) => {
+        let pts = 0;
+        for (const [i, c] of Object.entries(claims)) if (c.team === t) pts += cellOf(Number(i)).pts;
+        return { t, pts };
+      }).sort((a, b) => b.pts - a.pts);
+      if (!scores.length || scores[0].pts === 0) return "no tiles claimed";
+      if (scores[1] && scores[1].pts === scores[0].pts) return `tie at ${scores[0].pts} pts`;
+      return `winner: ${scores[0].t} (${scores[0].pts} pts)`;
+    }
+    const by = {};
+    for (const [i, c] of Object.entries(claims)) by[c.player] = (by[c.player] || 0) + cellOf(Number(i)).pts;
+    const top = Object.entries(by).sort((a, b) => b[1] - a[1])[0];
+    return top ? `top: ${top[0]} (${top[1]} pts)` : "no tiles claimed";
+  }
+
+  // ---- close the event (organiser) ----------------------------------------
+  endBtn.addEventListener("click", async () => {
+    if (!ev || !isManager() || !live()) return;
+    const msg = ev.teams
+      ? "End this bingo now? No more claims or sign-ups — the board and final standings stay visible."
+      : "End this bingo now? No more claims — the board and results stay visible.";
+    if (!confirm(msg)) return;
+    endBtn.disabled = true;
+    try {
+      const r = await fetch(`/api/clans/${clanId}/events/${eventId}/close`, {
+        method: "POST", headers: { "X-Clan-Token": keys()[clanId] },
+      });
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error || "couldn't close the event");
+      ev = body.event;
+      render();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      endBtn.disabled = false;
+    }
+  });
 
   // ---- roster + team assignment -------------------------------------------
   function renderRoster() {
