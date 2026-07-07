@@ -31,7 +31,19 @@
   function openPanel() {
     panel.hidden = false;
     loadData();
-    setTimeout(() => rsnEl.focus(), 50);
+    // If an account is already linked (via Link Account or a previous load),
+    // adopt it here so the adventurer doesn't re-type their name.
+    const acc = window.WOM && window.WOM.account;
+    if (acc && acc.player) {
+      rsnEl.value = acc.player;
+      const already = stats && rsn && rsn.toLowerCase() === acc.player.toLowerCase();
+      if (!already) {
+        if (acc.skills) applyStats({ player: acc.player, skills: acc.skills });
+        else load(acc.player);
+      }
+    } else {
+      setTimeout(() => rsnEl.focus(), 50);
+    }
   }
   function closePanel() { panel.hidden = true; }
 
@@ -106,19 +118,25 @@
     accountEl.hidden = true;
     loadBtn.disabled = true;
 
+    let body;
     try {
       const res = await fetch(`/api/hiscores?player=${encodeURIComponent(name)}`);
-      const body = await res.json();
+      body = await res.json();
       if (!res.ok) throw new Error(body.error || "Lookup failed.");
-      stats = body;
-      rsn = body.player || name;
     } catch (err) {
       statusEl.className = "iron-status error";
       statusEl.textContent = err.message || "Couldn't find that account on the hiscores.";
       loadBtn.disabled = false;
       return;
     }
+    await applyStats(body, name);
+  }
 
+  // Populate the board from a stats object ({ player, skills }), whether that
+  // came from a fresh hiscores lookup or an already-linked account.
+  async function applyStats(source, fallbackName) {
+    stats = source;
+    rsn = source.player || fallbackName || rsn;
     loadAcquired(rsn);
     // Share the account with the rest of the app (skill/boss pickers).
     if (window.WOM && window.WOM.setAccount) {
