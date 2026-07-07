@@ -195,13 +195,24 @@
     if (name) load(name);
   });
 
+  // Total level straight from the hiscores' authoritative "Overall" entry.
+  // (Summing every skill would double-count, since "Overall" is itself the
+  // total — and this stays correct however many skills the game has.)
+  function totalLevel() {
+    const s = stats && stats.skills;
+    if (!s) return 0;
+    const overall = Number(s.Overall && s.Overall.level);
+    if (Number.isFinite(overall) && overall > 0) return overall;
+    return Object.entries(s).reduce((n, [k, v]) => (k === "Overall" ? n : n + (Number(v.level) || 1)), 0);
+  }
+
   // -------------------------------------------------------------------------
   // Render
   // -------------------------------------------------------------------------
   function render() {
     // Account strip
     const cb = combatLevel(stats);
-    const total = Object.values(stats.skills).reduce((n, s) => n + (s.level || 1), 0);
+    const total = totalLevel();
     const chips = [
       `<div class="stat big"><span>${cb}</span><small>combat</small></div>`,
       `<div class="stat big"><span>${total}</span><small>total</small></div>`,
@@ -310,7 +321,7 @@
   // -------------------------------------------------------------------------
   function buildSummary() {
     const cb = combatLevel(stats);
-    const total = Object.values(stats.skills).reduce((n, s) => n + (s.level || 1), 0);
+    const total = totalLevel();
     const order = [
       "Attack", "Strength", "Defence", "Hitpoints", "Ranged", "Magic", "Prayer",
       "Slayer", "Herblore", "Farming", "Runecraft", "Construction", "Agility",
