@@ -23,8 +23,9 @@ app.use((_req, res, next) => {
       "script-src 'self'",
       "style-src 'self' https://fonts.googleapis.com",
       "font-src https://fonts.gstatic.com",
-      // Wiki sprites + the image hosts bingo proof screenshots live on.
-      "img-src 'self' data: https://oldschool.runescape.wiki https://cdn.discordapp.com https://media.discordapp.net https://i.imgur.com",
+      // Wiki sprites + the image hosts bingo proof screenshots live on;
+      // blob: lets the bank-scan downscale a locally chosen file via <img>.
+      "img-src 'self' data: blob: https://oldschool.runescape.wiki https://cdn.discordapp.com https://media.discordapp.net https://i.imgur.com",
       "connect-src 'self'",
       "frame-ancestors 'none'",
     ].join("; "),
@@ -32,12 +33,14 @@ app.use((_req, res, next) => {
   next();
 });
 
-// Body parsing: only the PvM-coach frames endpoint needs a large body;
-// everything else gets a tight limit (per-field caps do the fine bounding).
+// Body parsing: only the image-carrying endpoints (PvM-coach frames, bank
+// scan) need a large body; everything else gets a tight limit (per-field
+// caps do the fine bounding).
 const smallJson = express.json({ limit: "256kb" });
 const largeJson = express.json({ limit: "8mb" });
+const LARGE_BODY_PATHS = new Set(["/api/analyse", "/api/ironman/bank-scan"]);
 app.use((req, res, next) =>
-  req.path === "/api/analyse" ? largeJson(req, res, next) : smallJson(req, res, next)
+  LARGE_BODY_PATHS.has(req.path) ? largeJson(req, res, next) : smallJson(req, res, next)
 );
 
 // Serve index.html dynamically so social-preview tags carry an absolute URL
@@ -609,7 +612,7 @@ Rules:
 - Prices, exact drop rates and current metas can drift — if you're unsure of a number, say it's approximate rather than inventing precision.
 - Stay in character: the warm, slightly cheeky old sage — but the coaching itself is precise and honest. Keep it focused; this is a coach's readout, not a wiki page. Use markdown (bold for key terms, short bullet lists).`;
 
-function parseFrame(dataUrl) {
+function parseImage(dataUrl, maxBytes) {
   if (typeof dataUrl !== "string") return null;
   const m = dataUrl.match(/^data:(image\/[a-z+]+);base64,([A-Za-z0-9+/=]+)$/);
   if (!m) return null;
@@ -617,9 +620,10 @@ function parseFrame(dataUrl) {
   if (!ALLOWED_FRAME_TYPES.has(media_type)) return null;
   const data = m[2];
   // base64 length * 3/4 ≈ decoded byte size
-  if (data.length * 0.75 > MAX_FRAME_BYTES) return null;
+  if (data.length * 0.75 > maxBytes) return null;
   return { type: "image", source: { type: "base64", media_type, data } };
 }
+const parseFrame = (dataUrl) => parseImage(dataUrl, MAX_FRAME_BYTES);
 
 app.post("/api/analyse", async (req, res) => {
   if (rateLimited(req.ip)) {
@@ -790,6 +794,97 @@ app.post("/api/ironman/plan", async (req, res) => {
     send({ type: "error", error: friendly });
   }
   res.end();
+});
+
+// ---------------------------------------------------------------------------
+// Bank scan — read a bank screenshot with vision and match its contents
+// against the ironman milestone list, so the board can tick off what's owned.
+// ---------------------------------------------------------------------------
+
+const BANK_IMAGE_MAX_BYTES = 5_000_000; // one bank screenshot at decent res
+const BANK_ITEMS_MAX = 120;             // milestone list cap
+
+const BANK_SCAN_SYSTEM_PROMPT = `You are an Old School RuneScape bank analyser. You are shown ONE screenshot of a player's bank (from RuneLite or the OSRS client), and a numbered list of milestone items/achievements. Your only job is to identify which of the listed items are clearly visible in the bank screenshot.
+
+Reply with ONLY a JSON object — no prose, no markdown fences, no commentary:
+{"found":[<the numbers of the items you can clearly see>],"seen":[<the matched item names, short>]}
+
+Rules:
+- Include an item ONLY if you can clearly see its icon (or a stack of it) in the bank. Be conservative: when unsure, leave it out. Falsely claiming they own something is worse than missing it.
+- Match the actual item. Some milestones are sets or outfits (e.g. "Graceful outfit", "Bandos armour", "Barrows gloves") — only include them if you can see the real pieces.
+- Some listed milestones are not bankable items at all (e.g. a prayer unlock, a diary) — never match those; they can't appear in a bank.
+- Use the item numbers exactly as given in the list. Only use numbers that appear in the list.
+- If the image is clearly not an OSRS bank, return {"found":[],"seen":[]}.`;
+
+app.post("/api/ironman/bank-scan", async (req, res) => {
+  if (rateLimited(req.ip)) {
+    return res.status(429).json({ error: "Easy there — the old man needs a breather. Try again in a few minutes." });
+  }
+  const block = parseImage(req.body?.image, BANK_IMAGE_MAX_BYTES);
+  if (!block) {
+    return res.status(400).json({ error: "That bank image was missing, invalid, or too large." });
+  }
+  const rawItems = Array.isArray(req.body?.items) ? req.body.items : null;
+  if (!rawItems || !rawItems.length) {
+    return res.status(400).json({ error: "No milestone list was provided to match against." });
+  }
+  // Sanitise the milestone list: keep {id, name}, cap count and lengths.
+  const items = [];
+  const seenIds = new Set();
+  for (const it of rawItems.slice(0, BANK_ITEMS_MAX)) {
+    const id = clean(it?.id, 60);
+    const name = clean(it?.name, 80);
+    if (!id || !name || seenIds.has(id)) continue;
+    seenIds.add(id);
+    items.push({ id, name });
+  }
+  if (!items.length) return res.status(400).json({ error: "The milestone list was empty after validation." });
+
+  const list = items.map((it, n) => `${n + 1}. ${it.name}`).join("\n");
+  const instruction =
+    `Here is my bank screenshot. Milestone items to look for:\n${list}\n\n` +
+    `Which of these can you clearly see in my bank? Reply with the JSON object only.`;
+
+  try {
+    const message = await client.messages.create({
+      model: MODEL,
+      max_tokens: 700,
+      system: [{ type: "text", text: BANK_SCAN_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: [block, { type: "text", text: instruction }] }],
+    });
+    if (LOG_USAGE && message.usage) {
+      const u = message.usage;
+      console.log(`[bank-scan] items=${items.length} in=${u.input_tokens} out=${u.output_tokens} cache_read=${u.cache_read_input_tokens ?? 0}`);
+    }
+    if (message.stop_reason === "refusal") {
+      return res.status(200).json({ found: [], seen: [], note: "The old man couldn't make that one out." });
+    }
+    const text = message.content.find((b) => b.type === "text")?.text || "";
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    let parsed = { found: [], seen: [] };
+    if (jsonMatch) { try { parsed = JSON.parse(jsonMatch[0]); } catch { /* keep default */ } }
+
+    // Map the model's 1-based numbers back to milestone ids; ignore anything
+    // out of range so a stray number can't tick a bogus milestone.
+    const nums = Array.isArray(parsed.found) ? parsed.found : [];
+    const foundIds = [];
+    for (const n of nums) {
+      const idx = Math.round(Number(n)) - 1;
+      if (Number.isInteger(idx) && idx >= 0 && idx < items.length) foundIds.push(items[idx].id);
+    }
+    const seen = Array.isArray(parsed.seen)
+      ? parsed.seen.filter((s) => typeof s === "string").map((s) => s.slice(0, 80)).slice(0, 40)
+      : [];
+    res.json({ found: [...new Set(foundIds)], seen });
+  } catch (err) {
+    const friendly =
+      err instanceof Anthropic.AuthenticationError || /authentication|api.?key/i.test(err.message || "")
+        ? "No valid ANTHROPIC_API_KEY is configured on the server — see the README."
+        : err instanceof Anthropic.RateLimitError
+          ? "The scrying pool is overworked (rate limited). Give it a moment and try again."
+          : err.message || "Something went wrong reading your bank.";
+    res.status(502).json({ error: friendly });
+  }
 });
 
 // ---------------------------------------------------------------------------

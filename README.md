@@ -43,7 +43,8 @@ A live, personalised answer to static gear-progression charts (like Ladlor's): i
    - **obtained** (you've marked it done — saved per-account in your browser),
    - **ready now** (requirements met, go get it),
    - **locked** — showing the exact gap (e.g. *Abyssal whip · Slayer 78/85*).
-3. **Get my personalised plan** → your stats and milestone status are sent to the Wise Old Man, who returns a prioritised, ironman-aware plan grounded in your actual account (*where you are · do these next · on the horizon · grind for today*) — no "buy it off the GE" advice, because irons can't.
+3. **📷 Analyse my bank** → upload a bank screenshot and Claude's vision reads it, matching what it sees against the milestone list and **auto-ticking everything you already own** — no clicking through 44 tiles by hand. It's deliberately conservative (a miss beats a false "you own this"), and every tick stays a tap away from adjusting. The image is downscaled in your browser before upload to bound cost, and only milestone items are matched (nothing else about your bank is stored).
+4. **Get my personalised plan** → your stats and milestone status are sent to the Wise Old Man, who returns a prioritised, ironman-aware plan grounded in your actual account (*where you are · do these next · on the horizon · grind for today*) — no "buy it off the GE" advice, because irons can't.
 
 ### 📟 GE Terminal (market analysis + AI forecast)
 

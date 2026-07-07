@@ -15,6 +15,9 @@
   const boardEl = document.getElementById("iron-board");
   const focusEl = document.getElementById("iron-focus");
   const planBtn = document.getElementById("iron-plan");
+  const bankBtn = document.getElementById("iron-bank-btn");
+  const bankFile = document.getElementById("iron-bank-file");
+  const bankStatus = document.getElementById("iron-bank-status");
 
   // A few headline skills to show in the account strip.
   const HEADLINE = ["Attack", "Strength", "Defence", "Ranged", "Magic", "Prayer", "Slayer", "Herblore"];
@@ -316,4 +319,94 @@
   setInterval(() => {
     planBtn.disabled = !stats || (window.WOM && window.WOM.busy);
   }, 500);
+
+  // -------------------------------------------------------------------------
+  // Analyse bank — read a screenshot and auto-tick the milestones you own.
+  // -------------------------------------------------------------------------
+  const BANK_MAX_WIDTH = 1500;  // bank icons are small — keep enough detail
+  const BANK_JPEG_QUALITY = 0.82;
+
+  // Downscale a chosen image File to a bounded JPEG data URL.
+  function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const scale = Math.min(1, BANK_MAX_WIDTH / img.naturalWidth);
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(img.naturalWidth * scale));
+        c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL("image/jpeg", BANK_JPEG_QUALITY));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("That file didn't look like an image.")); };
+      img.src = url;
+    });
+  }
+
+  // Every milestone as { id, name } for the matcher.
+  function milestoneList() {
+    const out = [];
+    for (const track of data.tracks) for (const it of track.items) out.push({ id: it.id, name: it.name });
+    return out;
+  }
+
+  function setBankStatus(text, kind) {
+    bankStatus.hidden = false;
+    bankStatus.className = "iron-status" + (kind ? ` ${kind}` : "");
+    bankStatus.textContent = text;
+  }
+
+  bankBtn.addEventListener("click", () => {
+    if (!stats || !data) return;
+    bankFile.click();
+  });
+
+  bankFile.addEventListener("change", async () => {
+    const file = bankFile.files && bankFile.files[0];
+    bankFile.value = ""; // allow re-picking the same file later
+    if (!file || !stats || !data) return;
+
+    bankBtn.disabled = true;
+    setBankStatus("Reading your bank…");
+    let image;
+    try {
+      image = await fileToDataUrl(file);
+    } catch (err) {
+      setBankStatus(err.message || "Couldn't read that image.", "error");
+      bankBtn.disabled = false;
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/ironman/bank-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image, items: milestoneList() }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error || "The scan failed.");
+
+      const found = Array.isArray(body.found) ? body.found : [];
+      const known = new Set(milestoneList().map((m) => m.id));
+      const added = [];
+      for (const id of found) {
+        if (known.has(id) && !acquired.has(id)) { acquired.add(id); added.push(id); }
+      }
+      if (added.length) { saveAcquired(); render(); }
+
+      const total = found.filter((id) => known.has(id)).length;
+      setBankStatus(
+        total === 0
+          ? "No milestone items spotted in that bank. Try a clearer, wider screenshot."
+          : `Spotted ${total} milestone item${total === 1 ? "" : "s"}${added.length ? ` — marked ${added.length} newly obtained` : " (already ticked)"}. Tap any tile to adjust.`,
+        total === 0 ? "" : "ok"
+      );
+    } catch (err) {
+      setBankStatus(err.message || "Something went wrong reading your bank.", "error");
+    } finally {
+      bankBtn.disabled = false;
+    }
+  });
 })();

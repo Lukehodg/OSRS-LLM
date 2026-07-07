@@ -818,7 +818,19 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
   color: var(--text-dim); padding: 8px 2px;
 }
 .iron-status.error { color: #e8a49b; }
+.iron-status.ok { color: #8fd48f; }
 .iron-status[hidden] { display: none; }
+
+/* Analyse-bank control */
+.iron-bank {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin: 4px 0 2px;
+}
+.iron-bank-hint {
+  font-family: var(--font-body); font-size: 13px; color: var(--text-faint);
+  font-style: italic; min-width: 0; flex: 1;
+}
+@media (max-width: 700px) { .iron-bank-hint { flex-basis: 100%; } }
 
 .iron-account[hidden] { display: none; }
 .iron-account { margin-top: 8px; }
