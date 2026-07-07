@@ -371,27 +371,57 @@
 
   // -------------------------------------------------------------------------
   // Analyse bank — read a screenshot and auto-tick the milestones you own.
+  // A full bank export is one very tall, narrow image; if we squashed it into
+  // a single frame the item icons would be a few pixels wide and unreadable.
+  // So we keep it near native width and slice it into legible top-to-bottom
+  // strips, sending them together (the vision endpoint reads them as one bank).
   // -------------------------------------------------------------------------
-  const BANK_MAX_WIDTH = 1500;  // bank icons are small — keep enough detail
+  const BANK_MAX_WIDTH = 1400;   // cap width; icons stay ~native otherwise
+  const BANK_STRIP_H = 1500;     // target strip height (keeps the long edge legible)
+  const BANK_MAX_TILES = 8;      // matches the server cap; bounds vision cost
+  const BANK_OVERLAP = 48;       // strip overlap so a row split at a seam still appears whole
   const BANK_JPEG_QUALITY = 0.82;
 
-  // Downscale a chosen image File to a bounded JPEG data URL.
-  function fileToDataUrl(file) {
+  function loadImage(file) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       const url = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        const scale = Math.min(1, BANK_MAX_WIDTH / img.naturalWidth);
-        const c = document.createElement("canvas");
-        c.width = Math.max(1, Math.round(img.naturalWidth * scale));
-        c.height = Math.max(1, Math.round(img.naturalHeight * scale));
-        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-        resolve(c.toDataURL("image/jpeg", BANK_JPEG_QUALITY));
-      };
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
       img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("That file didn't look like an image.")); };
       img.src = url;
     });
+  }
+
+  // Slice a bank image into legible JPEG strips. Returns an array of data URLs.
+  async function fileToTiles(file) {
+    const img = await loadImage(file);
+    let w = img.naturalWidth, h = img.naturalHeight;
+    const wScale = Math.min(1, BANK_MAX_WIDTH / w);
+    w = Math.max(1, Math.round(w * wScale));
+    h = Math.max(1, Math.round(h * wScale));
+    // If it's taller than we can cover in BANK_MAX_TILES strips, scale down to fit
+    // (icons shrink a little, but the whole bank is still covered).
+    const maxH = BANK_STRIP_H * BANK_MAX_TILES;
+    if (h > maxH) { const f = maxH / h; w = Math.max(1, Math.round(w * f)); h = maxH; }
+
+    const full = document.createElement("canvas");
+    full.width = w; full.height = h;
+    full.getContext("2d").drawImage(img, 0, 0, w, h);
+
+    if (h <= BANK_STRIP_H) return [full.toDataURL("image/jpeg", BANK_JPEG_QUALITY)];
+
+    const strips = Math.min(BANK_MAX_TILES, Math.ceil(h / BANK_STRIP_H));
+    const stripH = Math.ceil(h / strips);
+    const tiles = [];
+    for (let i = 0; i < strips; i++) {
+      const sy = Math.max(0, i * stripH - (i ? BANK_OVERLAP : 0));
+      const sh = Math.min(h - sy, stripH + BANK_OVERLAP);
+      const c = document.createElement("canvas");
+      c.width = w; c.height = sh;
+      c.getContext("2d").drawImage(full, 0, sy, w, sh, 0, 0, w, sh);
+      tiles.push(c.toDataURL("image/jpeg", BANK_JPEG_QUALITY));
+    }
+    return tiles;
   }
 
   // Every milestone as { id, name } for the matcher.
@@ -418,10 +448,10 @@
     if (!file || !stats || !data) return;
 
     bankBtn.disabled = true;
-    setBankStatus("Reading your bank…");
-    let image;
+    setBankStatus("Preparing your bank…");
+    let tiles;
     try {
-      image = await fileToDataUrl(file);
+      tiles = await fileToTiles(file);
     } catch (err) {
       setBankStatus(err.message || "Couldn't read that image.", "error");
       bankBtn.disabled = false;
@@ -429,10 +459,11 @@
     }
 
     try {
+      setBankStatus(tiles.length > 1 ? `Reading your bank in ${tiles.length} sections…` : "Reading your bank…");
       const res = await fetch("/api/ironman/bank-scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image, items: milestoneList() }),
+        body: JSON.stringify({ images: tiles, items: milestoneList() }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "The scan failed.");
@@ -448,7 +479,7 @@
       const total = found.filter((id) => known.has(id)).length;
       setBankStatus(
         total === 0
-          ? "No milestone items spotted in that bank. Try a clearer, wider screenshot."
+          ? "No milestone items spotted in that bank. A sharper, full-resolution screenshot reads best."
           : `Spotted ${total} milestone item${total === 1 ? "" : "s"}${added.length ? ` — marked ${added.length} newly obtained` : " (already ticked)"}. Tap any tile to adjust.`,
         total === 0 ? "" : "ok"
       );

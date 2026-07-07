@@ -828,10 +828,11 @@ app.post("/api/ironman/plan", async (req, res) => {
 // against the ironman milestone list, so the board can tick off what's owned.
 // ---------------------------------------------------------------------------
 
-const BANK_IMAGE_MAX_BYTES = 5_000_000; // one bank screenshot at decent res
+const BANK_IMAGE_MAX_BYTES = 3_000_000; // per tile
+const BANK_MAX_TILES = 8;               // a tall bank is sliced into legible strips
 const BANK_ITEMS_MAX = 120;             // milestone list cap
 
-const BANK_SCAN_SYSTEM_PROMPT = `You are an Old School RuneScape bank analyser. You are shown ONE screenshot of a player's bank (from RuneLite or the OSRS client), and a numbered list of milestone items/achievements. Your only job is to identify which of the listed items are clearly visible in the bank screenshot.
+const BANK_SCAN_SYSTEM_PROMPT = `You are an Old School RuneScape bank analyser. You are shown one or more screenshots of a player's bank (from RuneLite or the OSRS client). When there are several images, they are consecutive top-to-bottom slices of the SAME bank — read them together as one continuous bank. You are also given a numbered list of milestone items/achievements. Your only job is to identify which of the listed items are clearly visible anywhere in the bank.
 
 Reply with ONLY a JSON object — no prose, no markdown fences, no commentary:
 {"found":[<the numbers of the items you can clearly see>],"seen":[<the matched item names, short>]}
@@ -839,17 +840,31 @@ Reply with ONLY a JSON object — no prose, no markdown fences, no commentary:
 Rules:
 - Include an item ONLY if you can clearly see its icon (or a stack of it) in the bank. Be conservative: when unsure, leave it out. Falsely claiming they own something is worse than missing it.
 - Match the actual item. Some milestones are sets or outfits (e.g. "Graceful outfit", "Bandos armour", "Barrows gloves") — only include them if you can see the real pieces.
+- Item icons are small; use the quantity numbers and colours to help, but don't guess. Many OSRS items look alike (different god armours, dragon vs rune) — only match when you're sure of the specific item.
 - Some listed milestones are not bankable items at all (e.g. a prayer unlock, a diary) — never match those; they can't appear in a bank.
 - Use the item numbers exactly as given in the list. Only use numbers that appear in the list.
-- If the image is clearly not an OSRS bank, return {"found":[],"seen":[]}.`;
+- If the images are clearly not an OSRS bank, return {"found":[],"seen":[]}.`;
 
 app.post("/api/ironman/bank-scan", async (req, res) => {
   if (rateLimited(req.ip)) {
     return res.status(429).json({ error: "Easy there — the old man needs a breather. Try again in a few minutes." });
   }
-  const block = parseImage(req.body?.image, BANK_IMAGE_MAX_BYTES);
-  if (!block) {
-    return res.status(400).json({ error: "That bank image was missing, invalid, or too large." });
+  // Accept an array of tiles (a tall bank sliced into strips), or a single
+  // image for backward compatibility.
+  const rawImages = Array.isArray(req.body?.images)
+    ? req.body.images
+    : (req.body?.image ? [req.body.image] : null);
+  if (!rawImages || !rawImages.length) {
+    return res.status(400).json({ error: "That bank image was missing." });
+  }
+  if (rawImages.length > BANK_MAX_TILES) {
+    return res.status(413).json({ error: `Too many bank tiles (max ${BANK_MAX_TILES}).` });
+  }
+  const blocks = [];
+  for (const img of rawImages) {
+    const block = parseImage(img, BANK_IMAGE_MAX_BYTES);
+    if (!block) return res.status(400).json({ error: "One of the bank images was invalid or too large." });
+    blocks.push(block);
   }
   const rawItems = Array.isArray(req.body?.items) ? req.body.items : null;
   if (!rawItems || !rawItems.length) {
@@ -869,19 +884,19 @@ app.post("/api/ironman/bank-scan", async (req, res) => {
 
   const list = items.map((it, n) => `${n + 1}. ${it.name}`).join("\n");
   const instruction =
-    `Here is my bank screenshot. Milestone items to look for:\n${list}\n\n` +
-    `Which of these can you clearly see in my bank? Reply with the JSON object only.`;
+    `Here ${blocks.length > 1 ? `are ${blocks.length} top-to-bottom slices of my bank` : "is my bank screenshot"}. Milestone items to look for:\n${list}\n\n` +
+    `Which of these can you clearly see anywhere in my bank? Reply with the JSON object only.`;
 
   try {
     const message = await client.messages.create({
       model: MODEL,
       max_tokens: 700,
       system: [{ type: "text", text: BANK_SCAN_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content: [block, { type: "text", text: instruction }] }],
+      messages: [{ role: "user", content: [...blocks, { type: "text", text: instruction }] }],
     });
     if (LOG_USAGE && message.usage) {
       const u = message.usage;
-      console.log(`[bank-scan] items=${items.length} in=${u.input_tokens} out=${u.output_tokens} cache_read=${u.cache_read_input_tokens ?? 0}`);
+      console.log(`[bank-scan] tiles=${blocks.length} items=${items.length} in=${u.input_tokens} out=${u.output_tokens} cache_read=${u.cache_read_input_tokens ?? 0}`);
     }
     if (message.stop_reason === "refusal") {
       return res.status(200).json({ found: [], seen: [], note: "The old man couldn't make that one out." });
