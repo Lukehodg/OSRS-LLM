@@ -9,9 +9,17 @@ services:
     startCommand: node server.js
     healthCheckPath: /healthz
     autoDeploy: true
+    # Player progress + clans live in SQLite/JSON under data/ — mount a disk
+    # so they survive redeploys (Render's filesystem is otherwise ephemeral).
+    disk:
+      name: runescribe-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false            # set this in the Render dashboard (secret)
+      - key: SITE_ORIGIN
+        value: https://www.osrs.com   # your public domain (canonical URL, OG tags, sitemap)
       - key: OSRS_LLM_MODEL
         value: claude-opus-4-8
       - key: RATE_LIMIT_PER_10_MIN

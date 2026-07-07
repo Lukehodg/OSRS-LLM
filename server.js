@@ -46,13 +46,34 @@ app.use((req, res, next) =>
 
 // Serve index.html dynamically so social-preview tags carry an absolute URL
 // (Twitter/Facebook scrapers require it). Everything else is static.
+// Canonical public origin. Set SITE_ORIGIN (e.g. https://www.osrs.com) in
+// production so social-preview tags, canonical URL, robots and sitemap all
+// use the real domain even behind a proxy; otherwise it's derived per-request.
+const SITE_ORIGIN = (process.env.SITE_ORIGIN || "").replace(/\/+$/, "");
+const originFor = (req) =>
+  SITE_ORIGIN || `${req.headers["x-forwarded-proto"] || req.protocol}://${req.get("host")}`;
+
 const INDEX_HTML = fs.readFileSync(path.join(PUBLIC_DIR, "index.html"), "utf8");
 function renderIndex(req) {
-  const proto = req.headers["x-forwarded-proto"] || req.protocol;
-  const origin = `${proto}://${req.get("host")}`;
-  return INDEX_HTML.replace(/%%ORIGIN%%/g, origin);
+  return INDEX_HTML.replace(/%%ORIGIN%%/g, originFor(req));
 }
 app.get("/", (req, res) => res.type("html").send(renderIndex(req)));
+
+// Crawler basics — point bots at the sitemap and keep them out of the API.
+app.get("/robots.txt", (req, res) => {
+  res.type("text/plain").send(
+    `User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${originFor(req)}/sitemap.xml\n`
+  );
+});
+app.get("/sitemap.xml", (req, res) => {
+  const origin = originFor(req);
+  res.type("application/xml").send(
+    `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    `  <url><loc>${origin}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>\n` +
+    `</urlset>\n`
+  );
+});
 
 app.use(express.static(PUBLIC_DIR, { index: false }));
 

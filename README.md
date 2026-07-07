@@ -145,6 +145,8 @@ Then open **http://localhost:3000** and ask away.
 | `LOG_USAGE` | `0` | Set to `1` to log per-request token usage + cache hits |
 | `ALERT_POLL_MS` | `60000` | How often the server evaluates GE price alerts |
 | `VAPID_SUBJECT` | `mailto:admin@runescribe.example` | Contact for Web Push (set to your real mailto:/URL before launch) |
+| `SITE_ORIGIN` | — (derived from request) | Your public origin, e.g. `https://www.osrs.com` — used for canonical URL, social-preview tags, `robots.txt` and `sitemap.xml`. Set it in production so these are correct behind a proxy. |
+| `DB_FILE` | `data/runescribe.db` | Path to the SQLite progress database |
 
 ## Deploying as a public website
 
