@@ -281,6 +281,10 @@
             <div class="bhq-panel-title">BINGO&nbsp;LINES</div>
             <div id="bhq-lines" class="bhq-lines"></div>
           </div>
+          <div class="bhq-panel" id="bhq-roster-panel" hidden>
+            <div class="bhq-panel-title">ROSTER</div>
+            <div id="bhq-roster"></div>
+          </div>
           <div class="bhq-panel" id="bhq-teams-panel" hidden>
             <div class="bhq-panel-title">TEAM&nbsp;STANDINGS</div>
             <div id="bhq-teams"></div>
@@ -294,6 +298,29 @@
             <div id="bhq-feed"></div>
           </div>
         </aside>
+      </div>
+
+      <!-- Draft overlay (snake draft) -->
+      <div id="bhq-draft" class="bhq-draft" hidden>
+        <div class="bhq-draft-card">
+          <header class="bhq-draft-head">
+            <span class="bhq-draft-title">TEAM&nbsp;DRAFT</span>
+            <span id="bhq-draft-turn" class="bhq-draft-turn"></span>
+            <button id="bhq-draft-close" class="bhq-x" type="button" title="Cancel draft">✕</button>
+          </header>
+          <p class="bhq-draft-sub">Snake order — the team on the clock picks a player from the pool. Order reverses each round so it stays fair.</p>
+          <div class="bhq-draft-body">
+            <div class="bhq-draft-pool">
+              <div class="bhq-panel-title">AVAILABLE&nbsp;PLAYERS</div>
+              <div id="bhq-draft-pool" class="bhq-draft-pool-list"></div>
+            </div>
+            <div id="bhq-draft-teams" class="bhq-draft-teams"></div>
+          </div>
+          <footer class="bhq-draft-foot">
+            <button id="bhq-draft-auto" class="clans-btn ghost" type="button">Autofill the rest</button>
+            <button id="bhq-draft-commit" class="clans-btn primary" type="button">Lock in teams</button>
+          </footer>
+        </div>
       </div>
     </div>
   </div>

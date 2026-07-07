@@ -1399,6 +1399,8 @@ function findBingo(req, res) {
   }
   ev.claims = ev.claims || {};
   ev.activity = ev.activity || [];
+  ev.roster = ev.roster || [];     // signups: [{ player, at }]
+  ev.members = ev.members || null; // team assignments: { [team]: [players] }
   return { clan, ev };
 }
 
@@ -1461,6 +1463,96 @@ app.post("/api/clans/:id/events/:eventId/claim", (req, res) => {
   }
   saveClans();
   res.status(201).json({ event: ev });
+});
+
+// Sign up for a team bingo's roster — open to any clan member.
+app.post("/api/clans/:id/events/:eventId/join", (req, res) => {
+  if (hiscoresLimited(req.ip)) return res.status(429).json({ error: "Slow down a touch." });
+  const found = findBingo(req, res);
+  if (!found) return;
+  const { ev } = found;
+  if (!ev.teams) return res.status(400).json({ error: "This bingo has no teams — just claim tiles." });
+  if (ev.endsAt <= Date.now()) return res.status(400).json({ error: "This event has ended." });
+  const player = clean(req.body?.player, 20);
+  if (!player) return res.status(400).json({ error: "Add your name to sign up." });
+  if (ev.roster.some((r) => r.player.toLowerCase() === player.toLowerCase())) {
+    return res.status(409).json({ error: "You're already on the roster." });
+  }
+  if (ev.roster.length >= 100) return res.status(400).json({ error: "The roster is full." });
+  ev.roster.push({ player, at: Date.now() });
+  logActivity(ev, `${player} signed up for the roster`);
+  saveClans();
+  res.status(201).json({ event: ev });
+});
+
+// Remove a player from the roster (and their team) — key-holder only.
+app.delete("/api/clans/:id/events/:eventId/roster/:player", (req, res) => {
+  const clan = authClan(req, res);
+  if (!clan) return;
+  const found = findBingo(req, res);
+  if (!found) return;
+  const { ev } = found;
+  const player = clean(req.params.player, 20).toLowerCase();
+  const before = ev.roster.length;
+  ev.roster = ev.roster.filter((r) => r.player.toLowerCase() !== player);
+  if (ev.roster.length === before) return res.status(404).json({ error: "That name isn't on the roster." });
+  if (ev.members) {
+    for (const t of Object.keys(ev.members)) {
+      ev.members[t] = ev.members[t].filter((p) => p.toLowerCase() !== player);
+    }
+  }
+  saveClans();
+  res.json({ event: ev });
+});
+
+// Set team assignments — key-holder only. Two modes:
+//   { mode: "random" }                    → shuffle the roster into the teams
+//   { assignments: { team: [players] } }  → commit a draft result
+app.post("/api/clans/:id/events/:eventId/teams", (req, res) => {
+  const clan = authClan(req, res);
+  if (!clan) return;
+  const found = findBingo(req, res);
+  if (!found) return;
+  const { ev } = found;
+  if (!ev.teams) return res.status(400).json({ error: "This bingo has no teams." });
+  if (!ev.roster.length) return res.status(400).json({ error: "Nobody has signed up yet — the roster is empty." });
+
+  const members = {};
+  for (const t of ev.teams) members[t] = [];
+
+  if (req.body?.mode === "random") {
+    const pool = ev.roster.map((r) => r.player);
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    pool.forEach((p, n) => members[ev.teams[n % ev.teams.length]].push(p));
+    logActivity(ev, `⚔ teams drawn at random (${pool.length} players)`);
+  } else {
+    const rosterNames = new Map(ev.roster.map((r) => [r.player.toLowerCase(), r.player]));
+    const seen = new Set();
+    const given = req.body?.assignments;
+    if (!given || typeof given !== "object") return res.status(400).json({ error: "No assignments given." });
+    for (const [team, players] of Object.entries(given)) {
+      if (!ev.teams.includes(team) || !Array.isArray(players)) continue;
+      for (const raw of players.slice(0, 100)) {
+        const canonical = rosterNames.get(clean(raw, 20).toLowerCase());
+        if (!canonical || seen.has(canonical)) continue; // roster members only, once
+        seen.add(canonical);
+        members[team].push(canonical);
+      }
+    }
+    if (!seen.size) return res.status(400).json({ error: "No valid picks — draft from the roster." });
+    logActivity(ev, `⚔ teams drafted (${seen.size} players picked)`);
+  }
+
+  ev.members = members;
+  saveClans();
+  const lineup = ev.teams
+    .map((t) => `**${t}** — ${members[t].length ? members[t].join(", ") : "(empty)"}`)
+    .join(" · ");
+  announce(clan, `⚔️ Bingo teams are set at **${clan.name}**: ${lineup}`);
+  res.json({ event: ev });
 });
 
 // Verify (or unverify) a claim — key-holder only.

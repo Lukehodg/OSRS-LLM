@@ -19,6 +19,8 @@
   const feedEl = document.getElementById("bhq-feed");
   const teamsPanel = document.getElementById("bhq-teams-panel");
   const teamsEl = document.getElementById("bhq-teams");
+  const rosterPanel = document.getElementById("bhq-roster-panel");
+  const rosterEl = document.getElementById("bhq-roster");
 
   const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   const keys = () => { try { return JSON.parse(localStorage.getItem("wom.clan.keys")) || {}; } catch { return {}; } };
@@ -48,7 +50,13 @@
     clearInterval(clockTimer); clearInterval(pollTimer);
   }
   root.addEventListener("click", (e) => { if (e.target.hasAttribute("data-bhq-dismiss")) close(); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !root.hidden) close(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || root.hidden) return;
+    // The draft overlay swallows Escape first, so a mid-draft cancel doesn't
+    // also close the whole board.
+    if (draft && !document.getElementById("bhq-draft").hidden) { closeDraft(); return; }
+    close();
+  });
 
   async function refresh(quiet) {
     try {
@@ -72,6 +80,14 @@
     return { name: c.name, pts: Number(c.pts) || 100, img: c.img || null, free: Boolean(c.free) || i === 12 };
   };
   const claimOf = (i) => (ev.claims && ev.claims[i]) || null;
+
+  // Which team a player was assigned to, or null if unassigned / no draw yet.
+  function teamForPlayer(player) {
+    if (!ev.members || !player) return null;
+    const lc = player.toLowerCase();
+    for (const t of ev.teams) if ((ev.members[t] || []).some((p) => p.toLowerCase() === lc)) return t;
+    return null;
+  }
 
   // Team bingo: stable colour per team (by its position in the event's list).
   const TEAM_HUES = ["#d9c07a", "#8fd48f", "#7fb8d8", "#e0857a", "#c39bd3", "#f0b27a", "#a3d9c9", "#d8d87f"];
@@ -169,9 +185,105 @@
     renderBoard();
     renderDetail();
     renderLines();
+    renderRoster();
     renderTeams();
     renderLeaderboard();
     renderFeed();
+  }
+
+  // ---- roster + team assignment -------------------------------------------
+  function renderRoster() {
+    if (!ev.teams) { rosterPanel.hidden = true; return; }
+    rosterPanel.hidden = false;
+    const roster = ev.roster || [];
+    const assigned = ev.members || null;
+    const teamOf = (p) => {
+      if (!assigned) return null;
+      for (const t of ev.teams) if ((assigned[t] || []).some((x) => x.toLowerCase() === p.toLowerCase())) return t;
+      return null;
+    };
+    const mgr = isManager();
+    const acct = window.WOM && window.WOM.account;
+    const mine = acct && roster.some((r) => r.player.toLowerCase() === acct.player.toLowerCase());
+
+    let html = "";
+    if (!roster.length) {
+      html += `<div class="bhq-dim">No signups yet. Players join here, then the organiser splits them into teams.</div>`;
+    } else {
+      html += `<div class="bhq-roster-list">` + roster.map((r) => {
+        const t = teamOf(r.player);
+        const dot = t ? `<span class="bhq-team-dot" data-team="${esc(t)}"></span>` : `<span class="bhq-roster-wait">·</span>`;
+        const rm = mgr ? `<span class="bhq-roster-x" data-drop="${esc(r.player)}" title="Remove">✕</span>` : "";
+        return `<div class="bhq-roster-row">${dot}<span class="bhq-roster-name">${esc(r.player)}</span>${t ? `<span class="bhq-roster-team">${esc(t)}</span>` : ""}${rm}</div>`;
+      }).join("") + `</div>`;
+    }
+
+    // Sign-up control (only while unassigned and the event is live)
+    if (live() && !assigned) {
+      html += mine
+        ? `<div class="bhq-roster-note">✓ You're on the roster — wait for the draw.</div>`
+        : `<form class="bhq-roster-form" id="bhq-roster-form">
+             <input name="player" type="text" maxlength="20" placeholder="your RSN" spellcheck="false" value="${esc(acct ? acct.player : "")}" />
+             <button class="clans-btn primary" type="submit">Sign up</button>
+           </form>`;
+    }
+
+    // Organiser controls
+    if (mgr && live()) {
+      html += `<div class="bhq-roster-actions">
+        <button class="clans-btn" id="bhq-roster-random" type="button" ${roster.length ? "" : "disabled"}>🎲 Randomise teams</button>
+        <button class="clans-btn primary" id="bhq-roster-draft" type="button" ${roster.length ? "" : "disabled"}>⚔ Draft teams</button>
+      </div>${assigned ? `<div class="bhq-roster-note">Teams are set — redraw any time.</div>` : ""}`;
+    }
+    html += `<div class="bhq-roster-status" id="bhq-roster-status"></div>`;
+    rosterEl.innerHTML = html;
+
+    rosterEl.querySelectorAll(".bhq-team-dot[data-team]").forEach((d) => { d.style.background = teamColor(d.dataset.team); });
+
+    const status = rosterEl.querySelector("#bhq-roster-status");
+    const form = rosterEl.querySelector("#bhq-roster-form");
+    if (form) form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const player = form.player.value.trim();
+      if (player) rosterAct("join", { player }, status);
+    });
+    rosterEl.querySelectorAll("[data-drop]").forEach((b) =>
+      b.addEventListener("click", () => rosterAct("drop", { player: b.dataset.drop }, status)));
+    const rnd = rosterEl.querySelector("#bhq-roster-random");
+    if (rnd) rnd.addEventListener("click", () => {
+      if (ev.members && !confirm("Redraw teams at random? This replaces the current lineup.")) return;
+      rosterAct("random", {}, status);
+    });
+    const drf = rosterEl.querySelector("#bhq-roster-draft");
+    if (drf) drf.addEventListener("click", openDraft);
+  }
+
+  async function rosterAct(kind, payload, status) {
+    if (status) { status.className = "bhq-roster-status"; status.textContent = "…"; }
+    const token = keys()[clanId];
+    try {
+      let r;
+      if (kind === "join") {
+        r = await fetch(`/api/clans/${clanId}/events/${eventId}/join`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+        });
+      } else if (kind === "drop") {
+        r = await fetch(`/api/clans/${clanId}/events/${eventId}/roster/${encodeURIComponent(payload.player)}`, {
+          method: "DELETE", headers: { "X-Clan-Token": token },
+        });
+      } else { // random
+        r = await fetch(`/api/clans/${clanId}/events/${eventId}/teams`, {
+          method: "POST", headers: { "Content-Type": "application/json", "X-Clan-Token": token },
+          body: JSON.stringify({ mode: "random" }),
+        });
+      }
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error || "that didn't work");
+      ev = body.event;
+      render();
+    } catch (err) {
+      if (status) { status.className = "bhq-roster-status err"; status.textContent = err.message; }
+    }
   }
 
   function renderTeams() {
@@ -383,6 +495,103 @@
     setTimeout(() => b.remove(), 2600);
   }
 
+  // ---- snake draft ---------------------------------------------------------
+  const draftEl = document.getElementById("bhq-draft");
+  const draftPoolEl = document.getElementById("bhq-draft-pool");
+  const draftTeamsEl = document.getElementById("bhq-draft-teams");
+  const draftTurnEl = document.getElementById("bhq-draft-turn");
+  let draft = null; // { pool:[], picks:{team:[]}, order:[teamIdx...], step }
+
+  function draftOrder(nTeams, nPlayers) {
+    const order = [];
+    let round = 0;
+    while (order.length < nPlayers) {
+      const seq = round % 2 === 0 ? [...Array(nTeams).keys()] : [...Array(nTeams).keys()].reverse();
+      for (const t of seq) { if (order.length < nPlayers) order.push(t); }
+      round++;
+    }
+    return order;
+  }
+
+  function openDraft() {
+    const players = (ev.roster || []).map((r) => r.player);
+    if (!players.length) return;
+    draft = {
+      pool: players.slice(),
+      picks: Object.fromEntries(ev.teams.map((t) => [t, []])),
+      order: draftOrder(ev.teams.length, players.length),
+      step: 0,
+    };
+    draftEl.hidden = false;
+    renderDraft();
+  }
+  function closeDraft() { draftEl.hidden = true; draft = null; }
+
+  function currentTeam() { return draft.order[draft.step] != null ? ev.teams[draft.order[draft.step]] : null; }
+
+  function renderDraft() {
+    const team = currentTeam();
+    draftTurnEl.innerHTML = team
+      ? `On the clock: <b>${esc(team)}</b> <span class="bhq-draft-clock-dot"></span>`
+      : `Draft complete — lock it in.`;
+    if (team) { const dot = draftTurnEl.querySelector(".bhq-draft-clock-dot"); if (dot) dot.style.background = teamColor(team); }
+
+    draftPoolEl.innerHTML = draft.pool.length
+      ? draft.pool.map((p) => `<button class="bhq-draft-pick" type="button" data-pick="${esc(p)}"${team ? "" : " disabled"}>${esc(p)}</button>`).join("")
+      : `<div class="bhq-dim">Everyone's been picked.</div>`;
+    draftPoolEl.querySelectorAll("[data-pick]").forEach((b) =>
+      b.addEventListener("click", () => pickPlayer(b.dataset.pick)));
+
+    draftTeamsEl.innerHTML = ev.teams.map((t) => {
+      const onClock = t === team;
+      return `<div class="bhq-draft-team${onClock ? " on" : ""}" data-col="${esc(t)}">
+        <div class="bhq-draft-team-head"><span class="bhq-team-dot" data-team="${esc(t)}"></span>${esc(t)}<span class="bhq-draft-count">${draft.picks[t].length}</span></div>
+        <div class="bhq-draft-team-list">${draft.picks[t].map((p) => `<span class="bhq-draft-chip">${esc(p)}</span>`).join("") || `<span class="bhq-dim">—</span>`}</div>
+      </div>`;
+    }).join("");
+    draftTeamsEl.querySelectorAll(".bhq-team-dot[data-team]").forEach((d) => { d.style.background = teamColor(d.dataset.team); });
+  }
+
+  function pickPlayer(player) {
+    const team = currentTeam();
+    if (!team) return;
+    const idx = draft.pool.findIndex((p) => p === player);
+    if (idx < 0) return;
+    draft.pool.splice(idx, 1);
+    draft.picks[team].push(player);
+    draft.step++;
+    renderDraft();
+  }
+
+  function autofillDraft() {
+    while (currentTeam() && draft.pool.length) {
+      const i = Math.floor(Math.random() * draft.pool.length);
+      pickPlayer(draft.pool[i]);
+    }
+  }
+
+  async function commitDraft() {
+    const status = rosterEl.querySelector("#bhq-roster-status");
+    try {
+      const r = await fetch(`/api/clans/${clanId}/events/${eventId}/teams`, {
+        method: "POST", headers: { "Content-Type": "application/json", "X-Clan-Token": keys()[clanId] },
+        body: JSON.stringify({ assignments: draft.picks }),
+      });
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error || "couldn't save teams");
+      ev = body.event;
+      closeDraft();
+      render();
+    } catch (err) {
+      if (status) { status.className = "bhq-roster-status err"; status.textContent = err.message; }
+      closeDraft();
+    }
+  }
+
+  document.getElementById("bhq-draft-close").addEventListener("click", closeDraft);
+  document.getElementById("bhq-draft-auto").addEventListener("click", autofillDraft);
+  document.getElementById("bhq-draft-commit").addEventListener("click", commitDraft);
+
   function renderDetail() {
     if (selected == null) {
       detailEl.innerHTML = `<div class="bhq-panel-title">TILE DETAIL</div>
@@ -416,9 +625,13 @@
     } else if (live()) {
       const acct = window.WOM && window.WOM.account;
       const lastTeam = (() => { try { return localStorage.getItem("wom.bingo.team") || ""; } catch { return ""; } })();
+      // Once teams are assigned, a player claims for their own team — so lock
+      // the select to it if we know who they are.
+      const myTeam = acct ? teamForPlayer(acct.player) : null;
+      const preset = myTeam || lastTeam;
       const teamSelect = ev.teams
-        ? `<select name="team">${["<option value=\"\">— pick your team —</option>"]
-            .concat(ev.teams.map((t) => `<option value="${esc(t)}"${t === lastTeam ? " selected" : ""}>${esc(t)}</option>`)).join("")}</select>`
+        ? `<select name="team"${myTeam ? " disabled" : ""}>${["<option value=\"\">— pick your team —</option>"]
+            .concat(ev.teams.map((t) => `<option value="${esc(t)}"${t === preset ? " selected" : ""}>${esc(t)}</option>`)).join("")}</select>`
         : "";
       html += `<form class="bhq-claim-form" data-act="claim">
         <input name="player" type="text" maxlength="20" placeholder="your RSN" spellcheck="false"

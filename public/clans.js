@@ -187,7 +187,8 @@
             <option value="pvm-low">🛡️ PvM — low level (Obor, Mole, KBD)</option>
           </select>
           <input name="theme" type="text" maxlength="160" placeholder="bingo theme (optional)" hidden />
-          <input name="teams" type="text" maxlength="200" placeholder="teams — e.g. Bandos, Zamorak (optional)" hidden />
+          <input name="teams" type="text" maxlength="200" placeholder="team names for teams mode — e.g. Bandos, Zamorak (optional)" hidden />
+          <span class="event-hint" hidden>Name teams and players sign up on the board — then draft or randomise them.</span>
           <select name="days">
             <option value="7">1 week</option><option value="3">3 days</option><option value="14">2 weeks</option>
           </select>
@@ -204,12 +205,14 @@
       const theme = form.querySelector("[name=theme]");
       const teams = form.querySelector("[name=teams]");
       const style = form.querySelector("[name=style]");
+      const hint = form.querySelector(".event-hint");
       const sync = () => {
         const bingo = typeSel.value === "bingo";
         target.hidden = bingo;
         style.hidden = !bingo;
         theme.hidden = !bingo;
         teams.hidden = !bingo;
+        if (hint) hint.hidden = !bingo;
       };
       typeSel.addEventListener("change", sync);
       sync();
