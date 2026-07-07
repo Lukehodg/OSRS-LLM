@@ -44,6 +44,8 @@ A live, personalised answer to static gear-progression charts (like Ladlor's): i
    - **ready now** (requirements met, go get it),
    - **locked** — showing the exact gap (e.g. *Abyssal whip · Slayer 78/85*).
 3. **📷 Analyse my bank** → upload a bank screenshot and Claude's vision reads it, matching what it sees against the milestone list and **auto-ticking everything you already own** — no clicking through 44 tiles by hand. It's deliberately conservative (a miss beats a false "you own this"), and every tick stays a tap away from adjusting. The image is downscaled in your browser before upload to bound cost, and only milestone items are matched (nothing else about your bank is stored).
+
+Your obtained milestones are **saved server-side keyed to your RuneScape name** (SQLite), so they follow you to any device — tick them on your PC, they're there on your phone. No login: the server trusts the linked name, which is fine for game progress. It still caches locally, so it works offline and syncs up when you're back.
 4. **Get my personalised plan** → your stats and milestone status are sent to the Wise Old Man, who returns a prioritised, ironman-aware plan grounded in your actual account (*where you are · do these next · on the horizon · grind for today*) — no "buy it off the GE" advice, because irons can't.
 
 ### 📟 GE Terminal (market analysis + AI forecast)
@@ -152,6 +154,7 @@ RuneScribe is a single Node server that serves both the site and the API — dep
 - Set `ANTHROPIC_API_KEY` (and optionally `OSRS_LLM_MODEL`, `RATE_LIMIT_PER_10_MIN`) as env vars.
 - It respects `X-Forwarded-For` behind a proxy, so per-IP rate limiting works on hosted platforms.
 - **Set a spend limit + alert in the Anthropic Console before going public.**
+- **Give `data/` a persistent volume.** Player progress lives in a SQLite database (`data/runescribe.db`), alongside the JSON stores for clans/alerts. On hosts with an ephemeral filesystem (Render/Railway/Fly default), mount a persistent disk at `data/` or these reset on every redeploy. `DB_FILE` overrides the database path.
 
 Ready-made deploy configs are included: `render.yaml` (Render blueprint), `Procfile` (Railway/Heroku), and a `Dockerfile` (Fly/VPS/any container host). Copy `.env.example` to `.env` for local runs.
 

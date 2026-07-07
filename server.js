@@ -4,6 +4,7 @@ import fs from "node:fs";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
+import { getProgress, getAllProgress, setProgress, deleteProgress, normRsn, isKind } from "./db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -1954,6 +1955,59 @@ async function evaluateAlerts() {
   if (changed) saveAlerts();
 }
 setInterval(() => { evaluateAlerts().catch(() => {}); }, Number(process.env.ALERT_POLL_MS) || 60_000);
+
+// ---------------------------------------------------------------------------
+// Progress store — RSN-keyed, no login. Linking an account lets a player's
+// progress (ironman milestones, GE watchlist/portfolio, prefs) follow them
+// across devices. Not authenticated: it trusts the name entered, which is
+// fine for non-sensitive game progress. Free rate bucket (no model cost).
+// ---------------------------------------------------------------------------
+
+const validRsn = (name) => {
+  const n = normRsn(name);
+  return n.length >= 1 && /^[a-z0-9 -]+$/.test(n) ? n : null;
+};
+
+// Everything a player has saved (used right after they link an account).
+app.get("/api/progress/:rsn", (req, res) => {
+  if (hiscoresLimited(req.ip)) return res.status(429).json({ error: "Slow down a touch." });
+  const rsn = validRsn(req.params.rsn);
+  if (!rsn) return res.status(400).json({ error: "Invalid player name." });
+  res.json({ rsn, progress: getAllProgress(rsn) });
+});
+
+// One kind (ironman | watch | portfolio | prefs).
+app.get("/api/progress/:rsn/:kind", (req, res) => {
+  if (hiscoresLimited(req.ip)) return res.status(429).json({ error: "Slow down a touch." });
+  const rsn = validRsn(req.params.rsn);
+  if (!rsn) return res.status(400).json({ error: "Invalid player name." });
+  if (!isKind(req.params.kind)) return res.status(400).json({ error: "Unknown progress kind." });
+  const hit = getProgress(rsn, req.params.kind);
+  res.json({ rsn, kind: req.params.kind, data: hit ? hit.data : null, updatedAt: hit ? hit.updatedAt : null });
+});
+
+// Save one kind. Body: { data: <json> }.
+app.put("/api/progress/:rsn/:kind", (req, res) => {
+  if (hiscoresLimited(req.ip)) return res.status(429).json({ error: "Slow down a touch." });
+  const rsn = validRsn(req.params.rsn);
+  if (!rsn) return res.status(400).json({ error: "Invalid player name." });
+  if (!isKind(req.params.kind)) return res.status(400).json({ error: "Unknown progress kind." });
+  if (!("data" in (req.body || {}))) return res.status(400).json({ error: "Missing data." });
+  try {
+    setProgress(rsn, req.params.kind, req.body.data);
+  } catch (err) {
+    return res.status(413).json({ error: err.message === "payload too large" ? "That save is too large." : "Couldn't save." });
+  }
+  res.json({ ok: true });
+});
+
+app.delete("/api/progress/:rsn/:kind", (req, res) => {
+  const rsn = validRsn(req.params.rsn);
+  if (!rsn) return res.status(400).json({ error: "Invalid player name." });
+  if (!isKind(req.params.kind)) return res.status(400).json({ error: "Unknown progress kind." });
+  deleteProgress(rsn, req.params.kind);
+  res.json({ ok: true });
+});
 
 // Health check for uptime monitors and hosting platforms.
 app.get("/healthz", (_req, res) => {

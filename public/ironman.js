@@ -69,17 +69,54 @@
   }
 
   // -------------------------------------------------------------------------
-  // Progress persistence (per RSN, on this device)
+  // Progress persistence — local cache + server sync keyed by RSN, so a
+  // player's obtained milestones follow them across devices once linked.
   // -------------------------------------------------------------------------
   const storeKey = (name) => `wom.iron.${name.toLowerCase()}`;
+  const progUrl = (name) => `/api/progress/${encodeURIComponent(name)}/ironman`;
+
   function loadAcquired(name) {
     try {
       const raw = localStorage.getItem(storeKey(name));
       acquired = new Set(raw ? JSON.parse(raw) : []);
     } catch { acquired = new Set(); }
   }
-  function saveAcquired() {
+  function saveAcquiredLocal() {
     try { localStorage.setItem(storeKey(rsn), JSON.stringify([...acquired])); } catch {}
+  }
+
+  let pushTimer = null;
+  function saveAcquired() {
+    saveAcquiredLocal();
+    // Debounced push to the server so progress survives on other devices.
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(() => {
+      fetch(progUrl(rsn), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: { ids: [...acquired] } }),
+      }).catch(() => { /* offline — local cache still holds it */ });
+    }, 400);
+  }
+
+  // Reconcile with the server after a load: the server is authoritative once
+  // it has anything saved; otherwise migrate this device's local progress up.
+  async function syncProgress() {
+    const name = rsn;
+    try {
+      const r = await fetch(progUrl(name));
+      if (!r.ok) return;
+      const body = await r.json();
+      const serverIds = body.data && Array.isArray(body.data.ids) ? body.data.ids : null;
+      if (serverIds && serverIds.length) {
+        if (name !== rsn) return; // a newer load superseded us
+        acquired = new Set(serverIds);
+        saveAcquiredLocal();
+        render();
+      } else if (acquired.size) {
+        saveAcquired(); // server empty — push what this device has
+      }
+    } catch { /* offline — keep local */ }
   }
 
   // -------------------------------------------------------------------------
@@ -149,6 +186,7 @@
     statusEl.hidden = true;
     loadBtn.disabled = false;
     render();
+    syncProgress(); // reconcile obtained milestones with the server
   }
 
   form.addEventListener("submit", (e) => {
