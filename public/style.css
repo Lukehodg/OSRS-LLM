@@ -1018,6 +1018,7 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
+.picker-grid[hidden] { display: none; }
 .picker-tile {
   display: flex;
   align-items: center;
@@ -1070,6 +1071,84 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
 .picker-badge.lv.maxed { color: #1c1403; background: var(--gold); border: none; }
 .picker-badge.ready { color: #8fd48f; border: 1px solid rgba(107, 191, 107, 0.4); }
 .picker-badge.gap { color: #c98f7f; border: 1px solid rgba(213, 71, 63, 0.3); }
+
+/* Picker reference detail (skills / quests) */
+.picker-detail[hidden] { display: none; }
+.pd-loading { color: var(--text-faint); font-style: italic; padding: 20px 2px; }
+.pd-back {
+  background: none; border: none; color: var(--gold-dim); cursor: pointer;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 1px; padding: 2px 0 12px;
+}
+.pd-back:hover { color: var(--gold-bright); }
+.pd-head { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+.pd-head h3 { margin: 0; font-family: var(--font-caps); font-size: 19px; color: var(--gold-bright); font-weight: 600; }
+.pd-icon { font-size: 30px; line-height: 1; flex: 0 0 auto; width: 40px; text-align: center; }
+.pd-icon-img { width: 38px; height: 38px; object-fit: contain; image-rendering: pixelated; }
+.pd-blurb { margin: 3px 0 0; font-size: 13.5px; color: var(--text-dim); font-style: italic; }
+.pd-lvl {
+  margin-left: auto; flex: 0 0 auto;
+  font-family: var(--font-mono); font-size: 12px; color: var(--gold-bright);
+  border: 1px solid var(--gold-line); border-radius: 999px; padding: 3px 11px;
+}
+.pd-chips { display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+.pd-chip {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.5px; color: var(--text-dim);
+  border: 1px solid var(--gold-faint); border-radius: 999px; padding: 2px 9px;
+}
+.pd-section-t {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-caps); font-size: 10px; letter-spacing: 2px; color: var(--gold-dim);
+  text-transform: uppercase; margin: 18px 0 8px;
+}
+.pd-approx { font-family: var(--font-body); font-size: 11px; letter-spacing: 0; color: var(--text-faint); font-style: italic; text-transform: none; }
+.pd-methods { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pd-methods th {
+  text-align: left; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1px;
+  color: var(--text-faint); text-transform: uppercase; padding: 0 8px 6px 0; font-weight: 400;
+}
+.pd-methods td { padding: 8px 8px 8px 0; border-top: 1px solid rgba(217, 192, 122, 0.08); vertical-align: top; }
+.pd-range { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+.pd-method b { color: var(--text); font-weight: 500; }
+.pd-mnote { display: block; font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+.pd-xph { font-family: var(--font-mono); font-size: 12px; color: var(--gold); white-space: nowrap; text-align: right; }
+.pd-methods tr.pd-here td { background: rgba(217, 192, 122, 0.06); }
+.pd-here .pd-range { color: var(--gold-bright); }
+.pd-you {
+  font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.5px; color: #1c1403;
+  background: var(--gold); border-radius: 3px; padding: 1px 4px; vertical-align: middle;
+}
+.pd-callout {
+  margin: 14px 0 4px; padding: 10px 13px; font-size: 13.5px; color: var(--text);
+  background: rgba(217, 192, 122, 0.05); border-left: 2px solid var(--gold-dim); border-radius: 0 8px 8px 0;
+}
+.pd-callout b { color: var(--gold-bright); }
+.pd-unlocks, .pd-rewards { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--text-dim); }
+.pd-unlocks li, .pd-rewards li { margin: 4px 0; }
+.pd-reqs { display: flex; flex-wrap: wrap; gap: 7px; }
+.pd-req {
+  font-family: var(--font-mono); font-size: 12px; color: var(--text-dim);
+  border: 1px solid var(--gold-faint); border-radius: 6px; padding: 4px 9px;
+}
+.pd-req.met { color: #8fd48f; border-color: rgba(107, 191, 107, 0.4); }
+.pd-req.met b { color: #8fd48f; }
+.pd-req.short { color: #e0918a; border-color: rgba(213, 71, 63, 0.4); }
+.pd-req.short b { color: #f0b3ab; }
+.pd-verdict { margin-top: 10px; font-size: 13.5px; padding: 8px 12px; border-radius: 8px; }
+.pd-verdict.ok { color: #9fd89f; background: rgba(107, 191, 107, 0.08); }
+.pd-verdict.no { color: #e0918a; background: rgba(213, 71, 63, 0.08); }
+.pd-quests { margin: 0; font-size: 13.5px; color: var(--text-dim); line-height: 1.5; }
+.pd-dim { color: var(--text-faint); font-style: italic; }
+.pd-actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+.pd-btn {
+  font-family: var(--font-caps); font-size: 11px; letter-spacing: 1px;
+  padding: 9px 16px; border-radius: 8px; cursor: pointer; text-decoration: none;
+  border: 1px solid var(--gold-line); color: var(--gold); background: none;
+  display: inline-flex; align-items: center;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.pd-btn:hover { color: var(--gold-bright); border-color: var(--gold-dim); }
+.pd-btn.primary { background: var(--gold); color: #1c1403; border-color: var(--gold); }
+.pd-btn.primary:hover { filter: brightness(1.07); color: #1c1403; }
 
 /* --------------------------------------------------------------------------
    GE Terminal

@@ -1,0 +1,238 @@
+{
+  "_note": "Training methods and level brackets are stable; XP/hr figures are approximate and vary with gear, location and effort. Every entry links the OSRS Wiki for full detail.",
+  "Attack": {
+    "wiki": "Attack", "blurb": "Melee accuracy — shared XP with your weapon of choice.",
+    "methods": [
+      { "range": "1–30", "name": "Waterfall Quest", "xph": "instant", "note": "~13k Attack & Strength on completion — skip the early grind." },
+      { "range": "30–70", "name": "Sand / Ammonite Crabs", "xph": "~30–50k", "note": "Very AFK. Best weapon, aggression potions, cannon optional." },
+      { "range": "50–99", "name": "Nightmare Zone", "xph": "~50–80k", "note": "AFK with absorptions + Guthan's; earns points for imbues." },
+      { "range": "any", "name": "Slayer", "xph": "~20–40k", "note": "Slower XP but pays for itself in drops — the ironman route." }
+    ],
+    "unlocks": ["40 — Rune weapons", "60 — Dragon weapons", "70 — Abyssal whip, Barrows", "75 — Ghrazi rapier / Blade of Saeldor"],
+    "fastest": "Nightmare Zone or aggressive Slayer with your best weapon; combat XP is shared, so train Attack/Strength/Defence on the same monsters."
+  },
+  "Strength": {
+    "wiki": "Strength", "blurb": "Melee damage — the single biggest DPS stat for melee.",
+    "methods": [
+      { "range": "1–30", "name": "Waterfall Quest", "xph": "instant", "note": "~13k Attack & Strength instantly." },
+      { "range": "30–70", "name": "Sand / Ammonite Crabs", "xph": "~30–50k", "note": "AFK; controlled or aggressive style." },
+      { "range": "60–99", "name": "Nightmare Zone (Dharok/aggression)", "xph": "~60–90k", "note": "One of the fastest AFK melee methods." },
+      { "range": "any", "name": "Slayer / bossing", "xph": "~30–50k", "note": "XP plus valuable drops." }
+    ],
+    "unlocks": ["Higher Strength = higher max hit with every melee weapon", "Enables Dragon Slayer II & other quest gear"],
+    "fastest": "Nightmare Zone on aggressive/controlled with your best crush or slash weapon."
+  },
+  "Defence": {
+    "wiki": "Defence", "blurb": "Damage reduction and gear unlocks — but watch it on pures/mains.",
+    "methods": [
+      { "range": "1–40", "name": "Quests + Crabs", "xph": "~30k", "note": "Fresh Start / Waterfall then crabs on defensive." },
+      { "range": "40–99", "name": "Nightmare Zone / Slayer (defensive)", "xph": "~40–70k", "note": "Long-range train on defensive style." }
+    ],
+    "unlocks": ["40 — Rune armour, Dragon Slayer I", "60 — Dragon armour", "70 — Barrows, Bandos, Justiciar", "75 — Torva, Masori"],
+    "fastest": "Train Defence on the controlled/defensive style while doing your normal combat XP."
+  },
+  "Hitpoints": {
+    "wiki": "Hitpoints", "blurb": "Rises passively as you train the other combat styles — no separate grind.",
+    "methods": [
+      { "range": "1–99", "name": "Any combat training", "xph": "~1/3 of your combat XP", "note": "Every melee/ranged hit and Magic combat spell gives Hitpoints XP." },
+      { "range": "any", "name": "NMZ / Slayer / bossing", "xph": "passive", "note": "Focus your combat method; HP follows automatically." }
+    ],
+    "unlocks": ["Higher HP = larger health pool for every activity"],
+    "fastest": "There's no dedicated HP grind — it comes free with Attack/Strength/Ranged/Magic training."
+  },
+  "Ranged": {
+    "wiki": "Ranged", "blurb": "The most versatile combat style — and home to the fastest combat XP in the game.",
+    "methods": [
+      { "range": "1–40", "name": "Sand Crabs / cannon on Slayer", "xph": "~30–50k", "note": "Best bow you can wield; AFK on crabs." },
+      { "range": "60–99", "name": "Chinning (Maniacal monkeys)", "xph": "~150–300k", "note": "Fastest Ranged XP; needs Monkey Madness II and a supply of chinchompas." },
+      { "range": "any", "name": "Nightmare Zone / Slayer", "xph": "~40–70k", "note": "Cheaper, AFK, with drops." }
+    ],
+    "unlocks": ["61 — Rune crossbow", "70 — Toxic blowpipe, Armadyl crossbow", "75 — Dragon hunter crossbow, Masori", "80 — Bow of Faerdhinen"],
+    "fastest": "Chinning maniacal monkeys is the fastest combat XP in the game — expensive, but unmatched."
+  },
+  "Prayer": {
+    "wiki": "Prayer", "blurb": "Expensive but transformative — offer bones at an altar for fast XP.",
+    "methods": [
+      { "range": "1–99", "name": "Gilded altar (POH) + dragon/superior bones", "xph": "~250–500k", "note": "Standard fast method; two burners lit for +350% XP." },
+      { "range": "1–99", "name": "Chaos Altar (Wilderness)", "xph": "~variable", "note": "~50% chance to not consume the bone — cheapest, but PK risk. Ironman favourite." },
+      { "range": "any", "name": "Ensouled heads (Arceuus)", "xph": "~250k", "note": "Combines Prayer with Magic XP." }
+    ],
+    "unlocks": ["43 — Protect prayers (huge)", "70 — Piety", "74 — Rigour/Augury (with quests)"],
+    "fastest": "Superior dragon bones on a gilded altar — or the Chaos Altar to halve the bone cost."
+  },
+  "Magic": {
+    "wiki": "Magic", "blurb": "Utility spells, powered staves, and some of the fastest AoE XP once you have Ancients.",
+    "methods": [
+      { "range": "1–33", "name": "Quests + strike/bolt spells or splashing", "xph": "~low", "note": "Splash to 33 for stun-alch; or curse spells for gp." },
+      { "range": "any", "name": "High Alchemy", "xph": "~65k", "note": "Semi-AFK and often profitable while you do other things." },
+      { "range": "62–99", "name": "Bursting / Barraging on Slayer (Ancients)", "xph": "~250k+", "note": "Fastest Magic XP; needs Desert Treasure I + a good multi task." },
+      { "range": "any", "name": "Trident / powered staves on Slayer", "xph": "~good", "note": "Solid XP plus drops." }
+    ],
+    "unlocks": ["Ancient Magicks (Desert Treasure I) — ice/blood barrage", "Lunar spellbook (Lunar Diplomacy)", "Arceuus spellbook (Kourend)"],
+    "fastest": "Ice/blood barraging a multi-Slayer task (dust devils, nechryael) is the fastest — plus valuable drops."
+  },
+  "Runecraft": {
+    "wiki": "Runecraft", "blurb": "Historically slow, but blood/soul runes and Guardians of the Rift changed the game.",
+    "methods": [
+      { "range": "1–99", "name": "Lava runes (binding necklace / Abyss)", "xph": "~40–50k", "note": "Profitable, decent XP once you unlock the shortcuts." },
+      { "range": "27–99", "name": "Guardians of the Rift", "xph": "~good", "note": "Well-rounded XP + rewards (Rift Guardian pet, catalytic runes, outfit)." },
+      { "range": "77–99", "name": "Blood / Soul runes (Arceuus)", "xph": "~25–45k", "note": "AFK-ish and very profitable — the best late-game XP." }
+    ],
+    "unlocks": ["77 — Blood runes (Arceuus favour)", "90 — Soul runes", "Ourania/ZMI for all-round runes"],
+    "fastest": "Guardians of the Rift for balanced XP and rewards, or blood/soul runes for AFK profit."
+  },
+  "Construction": {
+    "wiki": "Construction", "blurb": "The classic 'buyable' — fast XP if funded, cheaper minigame routes otherwise.",
+    "methods": [
+      { "range": "1–33", "name": "Crude/oak chairs → oak larders", "xph": "~fast", "note": "Cheap start; a butler saves runs." },
+      { "range": "52–99", "name": "Mahogany tables", "xph": "~500k+", "note": "Fastest method if you can fund the planks — needs a demon butler." },
+      { "range": "any", "name": "Mahogany Homes (contracts)", "xph": "~30–60k", "note": "Much cheaper, gives planks/supplies — the ironman route." }
+    ],
+    "unlocks": ["Gilded altar (Prayer)", "Ornate pool (full heal/restore)", "Jewellery box, portals, Superior garden (NMZ)"],
+    "fastest": "Oak larders early, then mahogany tables with a demon butler if you can afford it."
+  },
+  "Agility": {
+    "wiki": "Agility", "blurb": "Slow but unlocks run energy, shortcuts, and Marks of Grace for the Graceful outfit.",
+    "methods": [
+      { "range": "1–99", "name": "Rooftop courses", "xph": "~10–60k", "note": "Draynor 10 → Varrock 30 → Canifis 40 → Seers 60 → Pollnivneach 70 → Rellekka 80 → Ardougne 90. Marks of Grace drop for Graceful." },
+      { "range": "52–99", "name": "Hallowed Sepulchre", "xph": "~fast", "note": "Best XP + loot (hallowed marks, coins, dark graceful); scales at 62/72/82/92." },
+      { "range": "any", "name": "Brimhaven Agility Arena", "xph": "~moderate", "note": "Tickets for Graceful and the Agile outfit." }
+    ],
+    "unlocks": ["Graceful outfit (via Marks of Grace)", "Countless shortcuts across the map", "Higher run-energy regen"],
+    "fastest": "Rooftops until you can enter the Hallowed Sepulchre (52), then Sepulchre floors as high as you can reach."
+  },
+  "Herblore": {
+    "wiki": "Herblore", "blurb": "Makes your combat potions — expensive to buy, cheap if you farm the ingredients.",
+    "methods": [
+      { "range": "1–99", "name": "Make potions up the ladder", "xph": "~fast", "note": "Attack/Strength pots → prayer pots → super potions → super combats → divines." },
+      { "range": "any", "name": "Super combat / divine potions", "xph": "~200k+", "note": "Fast if funded; each potion is one click." },
+      { "range": "ironman", "name": "Farm herbs + secondaries", "xph": "~self-sufficient", "note": "Herb runs + your own secondaries keep you stocked without the GE." }
+    ],
+    "unlocks": ["Prayer potions, super combats, stamina, divine potions, antifire, sanfew"],
+    "fastest": "Whatever potion is most XP-per-gp you can afford — super combats late; ironmen farm the inputs."
+  },
+  "Thieving": {
+    "wiki": "Thieving", "blurb": "Great gp and fast XP once you reach Ardougne Knights or blackjacking.",
+    "methods": [
+      { "range": "1–45", "name": "Men / stalls / cake & fruit stalls", "xph": "~moderate", "note": "Cheap early XP and a little gp." },
+      { "range": "55–99", "name": "Ardougne Knights (pickpocket)", "xph": "~100–250k", "note": "Big gp; Ardougne Diary doubles loot. Dodgy necklace + shadow gear help." },
+      { "range": "45–99", "name": "Blackjacking (Pollnivneach)", "xph": "~fastest", "note": "Highest XP, click-intensive." },
+      { "range": "any", "name": "Pyramid Plunder", "xph": "~good", "note": "XP + artefacts; scales with level." }
+    ],
+    "unlocks": ["Rogue's outfit (double loot)", "Access to high-value pickpocket targets"],
+    "fastest": "Blackjacking for pure XP, or Ardougne Knights for XP plus serious gp."
+  },
+  "Farming": {
+    "wiki": "Farming", "blurb": "Trained in short daily 'runs', not grinded — one of the best skills to level passively.",
+    "methods": [
+      { "range": "1–99", "name": "Tree & fruit-tree runs", "xph": "~huge per run", "note": "A few minutes a day; enormous XP per sapling as you level." },
+      { "range": "any", "name": "Herb runs", "xph": "~profit + XP", "note": "Pairs perfectly with Herblore self-sufficiency." },
+      { "range": "high", "name": "Hardwood trees / Hespori / Farming Guild", "xph": "~more per run", "note": "Fossil Island hardwoods and the Farming Guild add big daily XP." }
+    ],
+    "unlocks": ["Ranarr/snapdragon for prayer pots", "Torstol for super/divine combats", "Magic/redwood trees, Hespori (bottomless bucket)"],
+    "fastest": "Do the full tree + fruit-tree + herb run circuit every day — the XP compounds fast."
+  },
+  "Fishing": {
+    "wiki": "Fishing", "blurb": "AFK-friendly with money-makers along the way; barbarian fishing trains three skills at once.",
+    "methods": [
+      { "range": "1–58", "name": "Shrimp → fly fishing trout/salmon", "xph": "~moderate", "note": "Fly fishing at Barbarian Village or Shilo." },
+      { "range": "58–99", "name": "Barbarian fishing", "xph": "~30–50k", "note": "Also gives Agility & Strength XP; 3-tick pushes ~90k/hr." },
+      { "range": "any", "name": "Anglerfish / Minnows / Sacred eels", "xph": "~profit or fast", "note": "Anglerfish for food; minnows for gp (needs Fishing Guild)." }
+    ],
+    "unlocks": ["Angler outfit (from Fishing Trawler)", "Karambwans (best combined food)", "Infernal harpoon"],
+    "fastest": "Barbarian fishing (with 3-tick for max rates), or minnows for money."
+  },
+  "Crafting": {
+    "wiki": "Crafting", "blurb": "Gems, glass, leather and jewellery — plenty of routes, some profitable.",
+    "methods": [
+      { "range": "1–99", "name": "Cut gems / make leather & d'hide", "xph": "~moderate", "note": "Sapphires→diamonds; then green→black d'hide bodies." },
+      { "range": "61–99", "name": "Glassblowing / superglass make", "xph": "~fast", "note": "Lunar 'Superglass Make' (Lunar Diplomacy) speeds it up massively." },
+      { "range": "66–99", "name": "Battlestaves", "xph": "~good", "note": "Air/water/etc. battlestaves — steady XP, decent value." }
+    ],
+    "unlocks": ["Crafting your own jewellery (games necklace, rings of dueling)", "D'hide bodies for Ranged", "Amethyst/dragonstone items"],
+    "fastest": "Superglass Make (Lunar) for speed; d'hide bodies or battlestaves for a cheaper climb."
+  },
+  "Firemaking": {
+    "wiki": "Firemaking", "blurb": "Slow with logs, excellent with Wintertodt — the go-to from level 50.",
+    "methods": [
+      { "range": "1–50", "name": "Burn logs (up the ladder)", "xph": "~moderate", "note": "Regular→oak→willow→maple as you level toward 50." },
+      { "range": "50–99", "name": "Wintertodt", "xph": "~250k+ equiv", "note": "The standard method — Firemaking XP plus supplies, pets and rewards." },
+      { "range": "high", "name": "2-tick Wintertodt / burn redwoods", "xph": "~fastest", "note": "Tick manipulation pushes the top rates." }
+    ],
+    "unlocks": ["Wintertodt loot (herbs, seeds, ores, Warm gloves, Pyromancer outfit, Phoenix pet)", "Light fires anywhere for cooking"],
+    "fastest": "Wintertodt from 50 to 99 — great XP and it pays for itself in supplies."
+  },
+  "Cooking": {
+    "wiki": "Cooking", "blurb": "One of the fastest skills in the game — wines will carry you to 99.",
+    "methods": [
+      { "range": "1–35", "name": "Cook fish / make basics", "xph": "~fast", "note": "Trout, salmon, then up the fish ladder." },
+      { "range": "35–99", "name": "Jugs of wine", "xph": "~450k", "note": "Fastest method; cheap ingredients, near-instant per batch." },
+      { "range": "any", "name": "Karambwans / wines", "xph": "~fast", "note": "Karambwans near-profit; wines for pure speed." }
+    ],
+    "unlocks": ["Cooking gauntlets (RFD) — fewer burns on sharks/karambwans", "Hosidius kitchen boost"],
+    "fastest": "Jugs of wine from ~35 all the way to 99."
+  },
+  "Fletching": {
+    "wiki": "Fletching", "blurb": "Buyable and semi-AFK — dart-making is basically instant XP if you can fund it.",
+    "methods": [
+      { "range": "1–99", "name": "Cut then string bows", "xph": "~fast", "note": "Shortbows/longbows up the wood ladder; profit on some." },
+      { "range": "high", "name": "Adamant/rune darts", "xph": "~800k+", "note": "Near-instant clicks; the fastest XP if funded — needs the smithing/quest unlock." },
+      { "range": "any", "name": "Broad arrows / bolts", "xph": "~good", "note": "Cheaper alternative to darts." }
+    ],
+    "unlocks": ["Make your own arrows/bolts/darts as ammo", "Amethyst/dragon ammo at high levels"],
+    "fastest": "Rune darts if you can afford them; otherwise stringing bows for near-break-even XP."
+  },
+  "Woodcutting": {
+    "wiki": "Woodcutting", "blurb": "The definitive AFK skill — or push tick-manipulation for surprisingly fast XP.",
+    "methods": [
+      { "range": "1–45", "name": "Regular → oaks → willows", "xph": "~moderate", "note": "Willows/teaks are the classic climb." },
+      { "range": "35–99", "name": "Teak trees (1.5t/2t)", "xph": "~100k+", "note": "Tick-manipulated teaks are the fastest WC XP." },
+      { "range": "90–99", "name": "Redwoods", "xph": "~65k", "note": "Very AFK and profitable." },
+      { "range": "any", "name": "Sulliuscep (Fossil Island)", "xph": "~good", "note": "XP + Numulite; needs Bone Voyage." }
+    ],
+    "unlocks": ["Lumberjack outfit (Temple Trekking) — +XP", "Crystal/infernal axe", "Forestry events & rewards"],
+    "fastest": "Tick-manipulated teak trees for speed, or redwoods for an AFK profit."
+  },
+  "Mining": {
+    "wiki": "Mining", "blurb": "AFK at Motherlode Mine or push 3-tick granite / Volcanic Mine for fast XP.",
+    "methods": [
+      { "range": "1–15", "name": "Copper / tin", "xph": "~slow", "note": "Or mine iron from 15." },
+      { "range": "15–99", "name": "Iron power-mining", "xph": "~40–60k", "note": "Drop the ore; fast but click-heavy." },
+      { "range": "30–99", "name": "Motherlode Mine", "xph": "~AFK", "note": "Nuggets buy the Prospector kit (+XP); very AFK." },
+      { "range": "high", "name": "Volcanic Mine / 3t granite / amethyst", "xph": "~fastest / profit", "note": "Volcanic Mine is the fastest; amethyst (92) is AFK profit." }
+    ],
+    "unlocks": ["Prospector kit (+XP)", "Dragon/crystal/infernal pickaxe", "Amethyst (92), gem rocks"],
+    "fastest": "Volcanic Mine or 3-tick granite for speed; Motherlode Mine to AFK."
+  },
+  "Smithing": {
+    "wiki": "Smithing", "blurb": "Blast Furnace for smelting speed, or Giants' Foundry for a rewarding minigame route.",
+    "methods": [
+      { "range": "1–99", "name": "Blast Furnace (gold bars + gauntlets)", "xph": "~200k+", "note": "Goldsmith gauntlets (from Family Crest) make gold bars the fastest XP." },
+      { "range": "15–99", "name": "Giants' Foundry", "xph": "~good", "note": "Minigame XP + Smiths' outfit and Kovac's rewards." },
+      { "range": "ironman", "name": "Cannonballs / smith gear", "xph": "~slow but useful", "note": "Cannonballs for your own cannon ammo." }
+    ],
+    "unlocks": ["Smith your own gear and cannonballs", "Smiths' uniform (+XP, less coal)", "Dragon platebody (with Fossil Island unlock)"],
+    "fastest": "Blast Furnace gold bars with goldsmith gauntlets, or Giants' Foundry for XP + rewards."
+  },
+  "Slayer": {
+    "wiki": "Slayer", "blurb": "The skill that funds the account — tasks unlock best-in-slot gear and drop huge loot.",
+    "methods": [
+      { "range": "1–99", "name": "Assigned tasks up the master ladder", "xph": "~varies", "note": "Turael → Mazchna → Vannaka → Chaeldar → Nieve/Steve → Duradel/Konar." },
+      { "range": "low", "name": "Turael/Spria skips", "xph": "~fast tasks", "note": "Skip bad tasks and build streaks for points." },
+      { "range": "high", "name": "Duradel / Konar + cannon or barrage", "xph": "~50k+ & drops", "note": "Cannon or ice-barrage big tasks for speed; Konar for brimstone/unique drops." }
+    ],
+    "unlocks": ["Slayer helm (i)", "Rings/whips/trident/occult and dozens of gear unlocks by level", "Boss access (Kraken 87, Cerberus 91, Hydra 95)"],
+    "fastest": "Block/skip low-XP tasks and barrage or cannon the big ones; take points-heavy Slayer seriously — it's your gp engine."
+  },
+  "Hunter": {
+    "wiki": "Hunter", "blurb": "Birdhouses tick along passively; chinning and maniacal monkeys give the fast XP.",
+    "methods": [
+      { "range": "1–99", "name": "Birdhouse runs (Fossil Island)", "xph": "~passive", "note": "A couple of minutes every ~50 min; superb for ironmen." },
+      { "range": "53–99", "name": "Chinchompas (grey/red/black)", "xph": "~fast", "note": "Box traps; also stockpiles chins for Ranged." },
+      { "range": "60–99", "name": "Maniacal monkeys (MM2)", "xph": "~150k+", "note": "The fastest Hunter XP; needs Monkey Madness II." },
+      { "range": "80–99", "name": "Herbiboar (Fossil Island)", "xph": "~AFK + herbs", "note": "No traps; great for ironmen." }
+    ],
+    "unlocks": ["Chinchompas (Ranged ammo)", "Herbiboar (herbs)", "Black chinchompas, Quetzin pet"],
+    "fastest": "Maniacal monkeys for pure XP; birdhouses + herbiboar for passive, ironman-friendly gains."
+  }
+}

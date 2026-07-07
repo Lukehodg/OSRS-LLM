@@ -107,9 +107,11 @@ Once linked, **every chat answer is tailored**: a compact digest (levels, quests
 
 ### Constellation pickers
 
-Three constellations open an in-UI picker instead of firing a canned question: **Skilling** → all 23 skills (training guides), **Combat** → 18 iconic bosses (strategy, gear, requirements), **Quests** → 12 high-impact quests (requirements, walkthrough, rewards). Each tile uses its real OSRS Wiki icon (with emoji fallback); selecting one asks the sage about it. All three are driven by one config in `public/pickers.js` — adding another picker is just a new entry.
+Three constellations open an in-UI picker: **Skilling** → all 23 skills, **Combat** → 18 iconic bosses, **Quests** → 12 high-impact quests. Each tile uses its real OSRS Wiki icon (with emoji fallback).
 
-**Account-aware:** once you've loaded your RSN in Ironman Path, the pickers personalise — the skill picker shows your live level on every tile (gold ✦ at 99), the boss picker badges each boss **✓ ready** or shows your exact gap against recommended stats (e.g. *Kraken · Slayer 78/87*), and every picked question carries your levels so the sage tailors its answer to your account. The account is remembered on your device across visits.
+**Skills and quests are reference panels, not just chat prompts.** Selecting a skill opens a **training-methods table** (level bracket → method → approximate XP/hr → notes), the fastest route, and notable unlocks — with the row matching *your* current level highlighted **you**. Selecting a quest shows its **skill requirements checked against your account** (green ✓ when you meet one, red with the exact gap like *Slayer 60/69* when you don't), a plain "you meet the requirements" / "short on N skills" verdict, the prerequisite quests, the rewards, and why it matters. Every entry links the OSRS Wiki for the authoritative detail, and an **Ask the sage** button still hands off to a personalised chat walkthrough/plan. The curated data lives in `public/skills-data.json` and `public/quests-data.json`; bosses still go straight to chat.
+
+**Account-aware throughout:** once you've loaded your RSN (in Ironman Path or Link Account), the tiles show your live level (gold ✦ at 99) and boss-readiness badges (*✓ ready* or *Kraken · Slayer 78/87*), the skill table highlights your bracket, and the quest panel checks every requirement against your real stats — the thing a static wiki can't do. Remembered on your device across visits.
 
 ---
 

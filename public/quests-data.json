@@ -1,0 +1,87 @@
+{
+  "_note": "Requirements are a curated summary for quick account checks; the wiki link on each quest has the authoritative, always-current detail.",
+  "Recipe for Disaster": {
+    "wiki": "Recipe_for_Disaster", "difficulty": "Experienced", "length": "Very long", "members": true,
+    "skills": { "Cooking": 70, "Fishing": 53, "Thieving": 53, "Mining": 50, "Woodcutting": 50, "Agility": 48, "Ranged": 40, "Smithing": 40, "Magic": 59, "Herblore": 25, "Slayer": 10 },
+    "quests": "Cook's Assistant, plus each subquest's own prerequisites (a large chain — see the wiki).",
+    "rewards": ["Barrows gloves — best-in-slot all-round gloves", "Cooking gauntlets (fewer burns)", "Access to the Culinaromancer's chest & bank"],
+    "why": "Barrows gloves are one of the biggest, cheapest combat upgrades in the game — a near-universal best-in-slot."
+  },
+  "Monkey Madness I": {
+    "wiki": "Monkey_Madness_I", "difficulty": "Master", "length": "Long", "members": true,
+    "skills": {},
+    "quests": "The Grand Tree, Tree Gnome Village. High combat strongly recommended (~60+).",
+    "rewards": ["Dragon scimitar (a top mid-game weapon)", "Choice of ~35k combat XP", "Monkey greegrees (Ape Atoll access)"],
+    "why": "The Dragon scimitar is the go-to melee weapon for most of the mid game, and it gates Monkey Madness II."
+  },
+  "Monkey Madness II": {
+    "wiki": "Monkey_Madness_II", "difficulty": "Grandmaster", "length": "Long", "members": true,
+    "skills": { "Slayer": 69, "Crafting": 70, "Hunter": 60, "Agility": 55, "Thieving": 55 },
+    "quests": "Monkey Madness I, Enlightened Journey, The Eyes of Glouphrie, Recipe for Disaster (Freeing King Awowogei).",
+    "rewards": ["Heavy & light ballista", "Access to Maniacal monkeys — the fastest Hunter/Ranged XP", "Demonic gorillas (zenyte shards)", "Royal seed pod (teleport)"],
+    "why": "Unlocks maniacal monkeys (best Hunter & Ranged XP) and demonic gorillas — a huge account milestone."
+  },
+  "Dragon Slayer II": {
+    "wiki": "Dragon_Slayer_II", "difficulty": "Grandmaster", "length": "Very long", "members": true,
+    "skills": { "Magic": 68, "Smithing": 62, "Mining": 60, "Crafting": 60, "Agility": 60, "Thieving": 50, "Construction": 50 },
+    "quests": "200 QP, plus Legends' Quest, Dream Mentor, A Tail of Two Cats, Animal Magnetism, Ghosts Ahoy, Bone Voyage, Client of Kourend.",
+    "rewards": ["Ava's assembler (best ranged cape effect)", "Access to Vorkath — a top money-making boss", "Rune & adamant dragons", "Large XP rewards"],
+    "why": "Vorkath and Ava's assembler alone make this one of the most valuable quests on any account."
+  },
+  "Desert Treasure I": {
+    "wiki": "Desert_Treasure", "difficulty": "Master", "length": "Long", "members": true,
+    "skills": { "Magic": 50, "Firemaking": 50, "Thieving": 53, "Slayer": 10 },
+    "quests": "The Dig Site, Temple of Ikov, The Tourist Trap, Troll Stronghold, Priest in Peril, Waterfall Quest.",
+    "rewards": ["Ancient Magicks — ice & blood barrage", "Access to the Ancient Pyramid", "Prerequisite for Desert Treasure II"],
+    "why": "Ice barrage is the backbone of fast Magic training and much of PvM/PvP — a defining unlock."
+  },
+  "Desert Treasure II - The Fallen Empire": {
+    "wiki": "Desert_Treasure_II_-_The_Fallen_Empire", "difficulty": "Grandmaster", "length": "Very long", "members": true,
+    "skills": { "Magic": 75, "Firemaking": 70, "Thieving": 62, "Herblore": 60, "Runecraft": 60, "Construction": 55, "Agility": 50 },
+    "quests": "Desert Treasure I, Secrets of the North, Beneath Cursed Sands, Temple of the Eye, His Faithful Servants, The Garden of Death, Below Ice Mountain.",
+    "rewards": ["The Ancient rings (Berserker/Warrior/etc. tier)", "Access to the four DT2 bosses", "Virtus armour (from those bosses)", "Huge XP rewards"],
+    "why": "Endgame content and BiS-adjacent rewards; the four new bosses drop the ancient rings and Virtus."
+  },
+  "Song of the Elves": {
+    "wiki": "Song_of_the_Elves", "difficulty": "Grandmaster", "length": "Very long", "members": true,
+    "skills": { "Agility": 70, "Construction": 70, "Farming": 70, "Herblore": 70, "Hunter": 70, "Mining": 70, "Smithing": 70, "Woodcutting": 70 },
+    "quests": "The whole elf series, ending in Mourning's End Part II (plus Making History and others).",
+    "rewards": ["Access to Prifddinas", "Crystal equipment (bow, halberd, armour)", "Best-in-slot Agility (Prifddinas course)", "Large XP rewards"],
+    "why": "Opens Prifddinas — crystal gear, Zalcano, the Gauntlet, and top-tier resource content. Required for the Quest Cape."
+  },
+  "The Fremennik Isles": {
+    "wiki": "The_Fremennik_Isles", "difficulty": "Experienced", "length": "Medium", "members": true,
+    "skills": { "Construction": 20 },
+    "quests": "The Fremennik Trials. Some combat and light Crafting/Woodcutting help during the quest.",
+    "rewards": ["Helm of neitiznot — a long-standing best-in-slot melee helm", "10k XP in two skills of your choice", "Access to Neitiznot & Jatizso"],
+    "why": "The Helm of neitiznot is a cheap, strong melee helmet that stays relevant for a very long time."
+  },
+  "Sins of the Father": {
+    "wiki": "Sins_of_the_Father", "difficulty": "Master", "length": "Long", "members": true,
+    "skills": { "Woodcutting": 50, "Fletching": 49, "Crafting": 48, "Agility": 42, "Slayer": 47, "Magic": 42 },
+    "quests": "A Taste of Hope (and the Myreque/vampyre chain before it).",
+    "rewards": ["Blisterwood flail — strong vs vampyres and a great Slayer weapon", "Upgraded Slayer around Slepe/Darkmeyer", "Access to Darkmeyer"],
+    "why": "The Blisterwood flail is a cheap, powerful weapon for vampyre Slayer tasks and Theatre of Blood's Verzik."
+  },
+  "Lunar Diplomacy": {
+    "wiki": "Lunar_Diplomacy", "difficulty": "Experienced", "length": "Long", "members": true,
+    "skills": { "Magic": 65, "Firemaking": 60, "Herblore": 55, "Crafting": 52, "Mining": 50, "Woodcutting": 40 },
+    "quests": "The Fremennik Trials, Lost City, Rune Mysteries, Shilo Village.",
+    "rewards": ["Lunar spellbook — Vengeance, Humidify, NPC Contact, Cure Other, and more", "Lunar equipment", "Access to the Moonclan / Astral runes"],
+    "why": "Vengeance and the Lunar utility spells are used constantly in PvM, PvP and skilling."
+  },
+  "Legends' Quest": {
+    "wiki": "Legends'_Quest", "difficulty": "Master", "length": "Long", "members": true,
+    "skills": { "Thieving": 56, "Woodcutting": 52, "Agility": 50, "Crafting": 50, "Magic": 50, "Mining": 50, "Prayer": 50, "Smithing": 45, "Herblore": 45 },
+    "quests": "107 QP, plus Family Crest, Heroes' Quest, Shilo Village, Underground Pass, Waterfall Quest.",
+    "rewards": ["Cape of Legends", "Full Legends' Guild access", "Dragon sq shield (right-half) access", "Large XP rewards"],
+    "why": "A key stepping-stone quest — it's a prerequisite for Dragon Slayer II and several other grandmaster quests."
+  },
+  "A Kingdom Divided": {
+    "wiki": "A_Kingdom_Divided", "difficulty": "Master", "length": "Long", "members": true,
+    "skills": { "Agility": 54, "Herblore": 52, "Woodcutting": 49, "Magic": 42, "Mining": 41, "Thieving": 38, "Slayer": 36, "Hunter": 35, "Construction": 20 },
+    "quests": "The full Kourend chain (The Ascent of Arceuus, The Forsaken Tower, The Depths of Despair, Tale of the Righteous, A Taste of Hope, plus the Architectural Alliance miniquest).",
+    "rewards": ["Deeper access across Great Kourend & Kebos", "Quest points toward the Quest Cape", "Large XP rewards"],
+    "why": "Caps off the Kourend storyline and unlocks more of the region — a solid QP and lore payoff."
+  }
+}
