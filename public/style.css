@@ -1072,6 +1072,30 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
 .picker-badge.ready { color: #8fd48f; border: 1px solid rgba(107, 191, 107, 0.4); }
 .picker-badge.gap { color: #c98f7f; border: 1px solid rgba(213, 71, 63, 0.3); }
 
+/* Quest search list (live from the wiki) */
+.picker-quests[hidden] { display: none; }
+.picker-qsearch {
+  width: 100%; box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.4); border: 1px solid var(--gold-faint); border-radius: 8px;
+  color: var(--text); font-family: var(--font-body); font-size: 14.5px; padding: 10px 13px; outline: none;
+  margin-bottom: 10px;
+}
+.picker-qsearch:focus { border-color: var(--gold-dim); }
+.picker-qsearch::placeholder { color: var(--text-faint); }
+.picker-qlist {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;
+  max-height: 52vh; overflow-y: auto;
+}
+.picker-qrow {
+  text-align: left; font-family: var(--font-body); font-size: 14px; color: var(--text);
+  background: rgba(217, 192, 122, 0.03); border: 1px solid var(--gold-faint); border-radius: 8px;
+  padding: 9px 12px; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+.picker-qrow:hover { transform: translateX(3px); border-color: var(--gold-dim); color: var(--gold-bright); background: rgba(217, 192, 122, 0.09); }
+@media (max-width: 700px) { .picker-qlist { grid-template-columns: 1fr; } }
+
 /* Picker reference detail (skills / quests) */
 .picker-detail[hidden] { display: none; }
 .pd-loading { color: var(--text-faint); font-style: italic; padding: 20px 2px; }

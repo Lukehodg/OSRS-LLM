@@ -65,32 +65,7 @@
       })),
     },
 
-    // ---- Quests: high-impact quests/series, icon = a key reward ----
-    quests: {
-      title: "CHOOSE A QUEST",
-      sub: "Pick a quest and the old man will give requirements, a walkthrough overview and rewards.",
-      cols: 2,
-      items: [
-        ["Recipe for Disaster", "🧤", "Barrows_gloves"],
-        ["Monkey Madness I", "🐵", "Dragon_scimitar"],
-        ["Monkey Madness II", "🐒", "Ballista"],
-        ["Dragon Slayer II", "🐉", "Ava's_assembler"],
-        ["Desert Treasure I", "❄️", "Ancient_staff"],
-        ["Desert Treasure II", "🩸", "Virtus_mask"],
-        ["Song of the Elves", "🧝", "Crystal_halberd"],
-        ["The Fremennik Isles", "⛑️", "Helm_of_neitiznot"],
-        ["Sins of the Father", "🧛", "Blisterwood_flail"],
-        ["Lunar Diplomacy", "🌙", "Lunar_staff"],
-        ["Legends' Quest", "🗺️", "Cape_of_legends"],
-        ["A Kingdom Divided", "👑", "Quest_point_cape"],
-      ].map(([name, icon, img]) => ({
-        name, icon, img,
-        prompt:
-          `Give me an overview of the ${name} quest in Old School RuneScape: the skill and ` +
-          `quest requirements, what to prepare, a high-level walkthrough of the steps, and ` +
-          `the rewards and unlocks. Note why it matters for progression.`,
-      })),
-    },
+    // Quests live in their own searchable, wiki-backed flow (see openQuests).
   };
 
   const panel = document.getElementById("picker");
@@ -98,18 +73,20 @@
   const subEl = document.getElementById("picker-sub");
   const grid = document.getElementById("picker-grid");
   const detailEl = document.getElementById("picker-detail");
+  const questsWrap = document.getElementById("picker-quests");
+  const qSearch = document.getElementById("picker-qsearch");
+  const qList = document.getElementById("picker-qlist");
 
   const wikiImg = (name) =>
     `https://oldschool.runescape.wiki/w/Special:FilePath/${encodeURIComponent(name + ".png")}`;
   const wikiUrl = (page) => `https://oldschool.runescape.wiki/w/${encodeURIComponent(String(page))}`;
   const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-  // ---- curated reference data (lazy-loaded, cached) ----
+  // ---- curated skill guides (lazy-loaded, cached) ----
   const dataCache = {};
   function loadData(key) {
     if (dataCache[key]) return dataCache[key];
-    const file = key === "skills" ? "skills-data.json" : "quests-data.json";
-    dataCache[key] = fetch(file).then((r) => r.json()).catch(() => ({}));
+    dataCache[key] = fetch("skills-data.json").then((r) => r.json()).catch(() => ({}));
     return dataCache[key];
   }
 
@@ -202,7 +179,7 @@
 
       tile.addEventListener("click", () => {
         // Skills & quests open a reference panel; bosses go straight to chat.
-        if (key === "skills" || key === "quests") showDetail(key, item);
+        if (key === "skills") showDetail(key, item);
         else { close(); if (window.WOM) window.WOM.ask(item.prompt + accountLine(item, key)); }
       });
       grid.appendChild(tile);
@@ -219,8 +196,7 @@
     detailEl.hidden = false;
     detailEl.innerHTML = `<div class="pd-loading">consulting the archives…</div>`;
     loadData(key).then((db) => {
-      const entry = db[item.name];
-      detailEl.innerHTML = key === "skills" ? skillDetail(item, entry) : questDetail(item, entry);
+      detailEl.innerHTML = skillDetail(item, db[item.name]);
       wireDetail(key, item);
     });
   }
@@ -261,54 +237,6 @@
     </div>`;
   }
 
-  function questDetail(item, q) {
-    if (!q) return backBtn() + `<div class="pd-head"><span class="pd-icon">${iconHtml(item)}</span><h3>${esc(item.name)}</h3></div><p class="pd-dim">No curated guide yet — ask the sage below.</p>` + questActions(item);
-
-    const chips = [
-      q.difficulty ? `<span class="pd-chip">${esc(q.difficulty)}</span>` : "",
-      q.length ? `<span class="pd-chip">${esc(q.length)}</span>` : "",
-      q.members ? `<span class="pd-chip">Members</span>` : `<span class="pd-chip">F2P</span>`,
-    ].join("");
-
-    // Skill requirements, checked against the linked account.
-    const reqs = q.skills || {};
-    const keys = Object.keys(reqs);
-    const a = account();
-    let unmet = 0;
-    const reqRows = keys.map((sk) => {
-      const need = reqs[sk], have = lvl(sk);
-      const met = have != null && have >= need;
-      if (a && have != null && !met) unmet++;
-      const state = have == null ? "unknown" : met ? "met" : "short";
-      const mark = have == null ? "" : met ? "✓" : `${have}/${need}`;
-      return `<span class="pd-req ${state}">${esc(sk)} ${need}${mark ? ` <b>${mark}</b>` : ""}</span>`;
-    }).join("");
-
-    let verdict = "";
-    if (a && keys.length) {
-      verdict = unmet === 0
-        ? `<div class="pd-verdict ok">✓ You meet the listed skill requirements, ${esc(a.player)}.</div>`
-        : `<div class="pd-verdict no">You're short on ${unmet} skill${unmet === 1 ? "" : "s"} — see the red requirements above.</div>`;
-    }
-
-    return backBtn() +
-      `<div class="pd-head"><span class="pd-icon">${iconHtml(item)}</span>
-        <div><h3>${esc(item.name)}</h3><div class="pd-chips">${chips}</div></div></div>
-      ${keys.length ? `<div class="pd-section-t">Skill requirements</div><div class="pd-reqs">${reqRows}</div>` : `<div class="pd-dim">No skill requirements.</div>`}
-      ${verdict}
-      ${q.quests ? `<div class="pd-section-t">Also needs</div><p class="pd-quests">${esc(q.quests)}</p>` : ""}
-      <div class="pd-section-t">Rewards</div><ul class="pd-rewards">${(q.rewards || []).map((r) => `<li>${esc(r)}</li>`).join("")}</ul>
-      ${q.why ? `<div class="pd-callout"><b>Why it matters:</b> ${esc(q.why)}</div>` : ""}
-      ${questActions(item, q)}`;
-  }
-
-  function questActions(item, q) {
-    return `<div class="pd-actions">
-      <button class="pd-btn primary" data-ask type="button">Ask the sage for a walkthrough</button>
-      ${q && q.wiki ? `<a class="pd-btn" href="${esc(wikiUrl(q.wiki))}" target="_blank" rel="noopener">Wiki ↗</a>` : ""}
-    </div>`;
-  }
-
   const backBtn = () => `<button class="pd-back" data-back type="button">← all</button>`;
 
   function wireDetail(key, item) {
@@ -333,13 +261,130 @@
     });
   }
 
+  // -------------------------------------------------------------------------
+  // Quests — the full list lives on the OSRS Wiki, so it's a searchable list
+  // with details fetched live per quest (account-aware skill checks included).
+  // -------------------------------------------------------------------------
+  let questNames = null;
+  let questPromise = null;
+
+  function openQuests() {
+    titleEl.textContent = "CHOOSE A QUEST";
+    const a = account();
+    subEl.textContent = "Every OSRS quest, live from the wiki" + (a ? ` — requirements checked against ${a.player}.` : ". Link your account to check requirements against your stats.");
+    grid.hidden = true;
+    detailEl.hidden = true;
+    questsWrap.hidden = false;
+    if (!questPromise) {
+      qList.innerHTML = `<div class="pd-loading">fetching the quest list…</div>`;
+      questPromise = fetch("/api/quests").then((r) => r.json()).then((b) => {
+        if (!b.quests) throw new Error(b.error || "unavailable");
+        questNames = b.quests;
+      }).catch((e) => { questPromise = null; qList.innerHTML = `<div class="pd-dim">Couldn't load the quest list — ${esc(e.message)}. Try again shortly.</div>`; });
+    }
+    questPromise && questPromise.then(() => { if (questNames) renderQuestList(qSearch.value); });
+    setTimeout(() => qSearch.focus(), 60);
+  }
+
+  function renderQuestList(filter) {
+    if (!questNames) return;
+    const f = (filter || "").trim().toLowerCase();
+    const list = questNames.filter((n) => !f || n.toLowerCase().includes(f)).slice(0, 300);
+    qList.innerHTML = list.length
+      ? list.map((n) => `<button class="picker-qrow" type="button" data-quest="${esc(n)}">${esc(n)}</button>`).join("")
+      : `<div class="pd-dim">No quest matches “${esc(f)}”.</div>`;
+    qList.querySelectorAll("[data-quest]").forEach((b) =>
+      b.addEventListener("click", () => showQuestDetail(b.dataset.quest)));
+  }
+  qSearch.addEventListener("input", () => renderQuestList(qSearch.value));
+
+  function showQuestDetail(name) {
+    titleEl.textContent = name.toUpperCase();
+    subEl.textContent = "";
+    questsWrap.hidden = true;
+    detailEl.hidden = false;
+    detailEl.innerHTML = `<div class="pd-loading">reading the wiki…</div>`;
+    fetch(`/api/quest?name=${encodeURIComponent(name)}`).then((r) => r.json()).then((b) => {
+      if (!b.quest) throw new Error(b.error || "not found");
+      detailEl.innerHTML = wikiQuestDetail(b.quest);
+      wireQuestDetail(b.quest);
+    }).catch((e) => {
+      detailEl.innerHTML = questBackBtn() + `<p class="pd-dim">Couldn't load “${esc(name)}” — ${esc(e.message)}.</p>`;
+      const bb = detailEl.querySelector("[data-qback]");
+      if (bb) bb.addEventListener("click", backToQuestList);
+    });
+  }
+
+  function wikiQuestDetail(q) {
+    const chips = [
+      q.difficulty ? `<span class="pd-chip">${esc(q.difficulty)}</span>` : "",
+      q.length ? `<span class="pd-chip">${esc(q.length)}</span>` : "",
+      q.members ? `<span class="pd-chip">Members</span>` : `<span class="pd-chip">F2P</span>`,
+    ].join("");
+
+    const reqs = q.skills || {};
+    const keys = Object.keys(reqs).sort((a, b) => reqs[b] - reqs[a]);
+    const a = account();
+    let unmet = 0;
+    const reqRows = keys.map((sk) => {
+      const need = reqs[sk], have = lvl(sk);
+      const met = have != null && have >= need;
+      if (a && have != null && !met) unmet++;
+      const state = have == null ? "unknown" : met ? "met" : "short";
+      const mark = have == null ? "" : met ? "✓" : `${have}/${need}`;
+      return `<span class="pd-req ${state}">${esc(sk)} ${need}${mark ? ` <b>${mark}</b>` : ""}</span>`;
+    }).join("");
+    let verdict = "";
+    if (a && keys.length) {
+      verdict = unmet === 0
+        ? `<div class="pd-verdict ok">✓ You meet the skill requirements, ${esc(a.player)}.</div>`
+        : `<div class="pd-verdict no">You're short on ${unmet} skill${unmet === 1 ? "" : "s"} — see the red requirements.</div>`;
+    }
+
+    return questBackBtn() +
+      `<div class="pd-head"><span class="pd-icon">📜</span>
+        <div><h3>${esc(q.name)}</h3><div class="pd-chips">${chips}</div></div></div>
+      ${keys.length ? `<div class="pd-section-t">Skill requirements</div><div class="pd-reqs">${reqRows}</div>${verdict}` : ""}
+      ${q.requirements && q.requirements.length ? `<div class="pd-section-t">Requirements</div><ul class="pd-rewards">${q.requirements.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}
+      ${q.items && q.items.length ? `<div class="pd-section-t">Bring</div><ul class="pd-rewards">${q.items.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}
+      ${q.rewards && q.rewards.length ? `<div class="pd-section-t">Rewards</div><ul class="pd-rewards">${q.rewards.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}
+      <div class="pd-callout">Data pulled live from the OSRS Wiki. Open it for the full walkthrough, maps and exact steps.</div>
+      <div class="pd-actions">
+        <button class="pd-btn primary" data-qask type="button">Ask the sage for a walkthrough</button>
+        <a class="pd-btn" href="${esc(wikiUrl(q.wiki || q.name))}" target="_blank" rel="noopener">Wiki ↗</a>
+      </div>`;
+  }
+
+  const questBackBtn = () => `<button class="pd-back" data-qback type="button">← all quests</button>`;
+  function backToQuestList() {
+    detailEl.hidden = true;
+    questsWrap.hidden = false;
+    titleEl.textContent = "CHOOSE A QUEST";
+    const a = account();
+    subEl.textContent = "Every OSRS quest, live from the wiki" + (a ? ` — requirements checked against ${a.player}.` : ".");
+  }
+  function wireQuestDetail(q) {
+    const back = detailEl.querySelector("[data-qback]");
+    if (back) back.addEventListener("click", backToQuestList);
+    const ask = detailEl.querySelector("[data-qask]");
+    if (ask) ask.addEventListener("click", () => {
+      close();
+      const a = account();
+      const ctx = a ? ` For context, I'm ${a.player}.` : "";
+      if (window.WOM) window.WOM.ask(
+        `Give me a walkthrough overview of the ${q.name} quest in Old School RuneScape: what to prepare, the key steps, and any tricky parts. Note the rewards and why it matters.${ctx}`);
+    });
+  }
+
   function open(key) {
+    if (key === "quests") { openQuests(); panel.hidden = false; return; }
     const cfg = CONFIGS[key];
     if (!cfg) return;
     detailEl.hidden = true;
+    questsWrap.hidden = true;
     grid.hidden = false;
     render(cfg, key);
-    if (key === "skills" || key === "quests") loadData(key); // warm the cache
+    if (key === "skills") loadData(key); // warm the cache
     panel.hidden = false;
   }
   function close() { panel.hidden = true; }

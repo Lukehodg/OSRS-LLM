@@ -889,6 +889,161 @@ app.post("/api/ironman/bank-scan", async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Quests — live from the OSRS Wiki. The full list comes from Category:Quests;
+// each quest's details are parsed from its {{Quest details}} / {{Infobox
+// Quest}} templates, so the data is always current and authoritative. The
+// account-aware skill check runs on parsed requirements; the full text is
+// shown regardless, so nothing is lost if a requirement doesn't parse.
+// ---------------------------------------------------------------------------
+
+const SKILL_NAMES = [
+  "Attack", "Strength", "Defence", "Hitpoints", "Ranged", "Prayer", "Magic",
+  "Cooking", "Woodcutting", "Fletching", "Fishing", "Firemaking", "Crafting",
+  "Smithing", "Mining", "Herblore", "Agility", "Thieving", "Slayer", "Farming",
+  "Runecraft", "Hunter", "Construction",
+];
+const SKILL_LC = new Map(SKILL_NAMES.map((s) => [s.toLowerCase(), s]));
+
+// Pull the inner content of the first {{<name> ...}} template (brace-matched).
+function extractTemplate(text, name) {
+  const re = new RegExp("\\{\\{\\s*" + name, "i");
+  const start = text.search(re);
+  if (start < 0) return null;
+  let i = start + 2, depth = 1;
+  while (i < text.length && depth > 0) {
+    if (text.startsWith("{{", i)) { depth++; i += 2; }
+    else if (text.startsWith("}}", i)) { depth--; i += 2; }
+    else i++;
+  }
+  return text.slice(start + 2, i - 2);
+}
+
+// Split a template's inner content into named params at top-level pipes.
+function templateParams(inner) {
+  if (inner == null) return {};
+  const parts = [];
+  let buf = "", brace = 0, brack = 0;
+  for (let i = 0; i < inner.length; i++) {
+    const two = inner.slice(i, i + 2);
+    if (two === "{{") { brace++; buf += two; i++; continue; }
+    if (two === "}}") { brace--; buf += two; i++; continue; }
+    if (two === "[[") { brack++; buf += two; i++; continue; }
+    if (two === "]]") { brack--; buf += two; i++; continue; }
+    if (inner[i] === "|" && brace === 0 && brack === 0) { parts.push(buf); buf = ""; continue; }
+    buf += inner[i];
+  }
+  parts.push(buf);
+  const params = {};
+  for (const p of parts.slice(1)) {
+    const eq = p.indexOf("=");
+    if (eq < 0) continue;
+    params[p.slice(0, eq).trim().toLowerCase()] = p.slice(eq + 1).trim();
+  }
+  return params;
+}
+
+// Best-effort skill requirements from a requirements field. Handles the
+// common OSRS-wiki forms: {{SCP|Skill|Level}}, "40 [[Attack]]", "[[Attack]] 40".
+function parseSkillReqs(raw) {
+  const reqs = {};
+  const bump = (skill, lvl) => {
+    const sk = SKILL_LC.get(String(skill).toLowerCase());
+    const n = Number(lvl);
+    if (sk && Number.isInteger(n) && n >= 1 && n <= 99) reqs[sk] = Math.max(reqs[sk] || 0, n);
+  };
+  for (const m of raw.matchAll(/\{\{\s*(?:SCP|Skill(?:\s*clickpic)?)\s*\|\s*([A-Za-z]+)\s*\|\s*(\d+)/gi)) bump(m[1], m[2]);
+  for (const m of raw.matchAll(/(\d+)\s*\[\[\s*([A-Za-z]+)\s*(?:\]\]|\|)/g)) bump(m[2], m[1]);
+  for (const m of raw.matchAll(/\[\[\s*([A-Za-z]+)\s*\]\]\s*(\d+)/g)) bump(m[1], m[2]);
+  return reqs;
+}
+
+// Turn a requirements/rewards wikitext blob into clean bullet lines.
+function wikiLines(raw) {
+  if (!raw) return [];
+  return tidyWikitext(raw)
+    .split("\n")
+    .map((l) => l.replace(/^[*#:]+\s*/, "").replace(/\{\{[^}]*\}\}/g, "").trim())
+    .filter((l) => l.length > 1)
+    .slice(0, 30);
+}
+
+const yesish = (v) => /^\s*(yes|true|1|members)\s*$/i.test(String(v || ""));
+
+// Extract a level-2 section's body ("== Rewards ==" … next "==").
+function sectionBody(text, heading) {
+  const re = new RegExp("^==+\\s*" + heading + "\\s*==+\\s*$", "im");
+  const m = re.exec(text);
+  if (!m) return "";
+  const start = m.index + m[0].length;
+  const next = text.slice(start).search(/^==+\s*[^=]/m);
+  return next < 0 ? text.slice(start) : text.slice(start, start + next);
+}
+
+function parseQuest(title, wikitext) {
+  const details = templateParams(extractTemplate(wikitext, "Quest\\s*details"));
+  const infobox = templateParams(extractTemplate(wikitext, "Infobox\\s*Quest"));
+  const reqRaw = details.requirements || "";
+  const rewardsRaw = details.rewards || sectionBody(wikitext, "Rewards");
+  return {
+    name: title,
+    wiki: title.replace(/ /g, "_"),
+    difficulty: details.difficulty ? tidyWikitext(details.difficulty).trim() : null,
+    length: details.length ? tidyWikitext(details.length).trim() : null,
+    members: infobox.members ? yesish(infobox.members) : true,
+    skills: parseSkillReqs(reqRaw),
+    requirements: wikiLines(reqRaw),
+    items: wikiLines(details.items || ""),
+    rewards: wikiLines(rewardsRaw),
+  };
+}
+
+// The full quest list (Category:Quests), cached for a day.
+const getQuestList = () => cached("questlist", 24 * 3600_000, async () => {
+  const out = [];
+  let cmcontinue = "";
+  for (let page = 0; page < 6; page++) {
+    const url = `${WIKI_API}?action=query&list=categorymembers&cmtitle=Category:Quests&cmtype=page&cmlimit=500&format=json` +
+      (cmcontinue ? `&cmcontinue=${encodeURIComponent(cmcontinue)}` : "");
+    const data = await fetchJson(url);
+    for (const m of data.query?.categorymembers || []) {
+      if (m.ns === 0 && !/\//.test(m.title)) out.push(m.title);
+    }
+    cmcontinue = data.continue?.cmcontinue || "";
+    if (!cmcontinue) break;
+  }
+  return [...new Set(out)].sort((a, b) => a.localeCompare(b));
+});
+
+app.get("/api/quests", async (_req, res) => {
+  try {
+    res.json({ quests: await getQuestList() });
+  } catch (err) {
+    res.status(502).json({ error: `The wiki's quest list is unreachable (${err.message}).` });
+  }
+});
+
+app.get("/api/quest", async (req, res) => {
+  if (hiscoresLimited(req.ip)) return res.status(429).json({ error: "Slow down a touch." });
+  const name = clean(req.query.name, 80);
+  if (!name) return res.status(400).json({ error: "No quest name given." });
+  try {
+    const quest = await cached(`quest:${name.toLowerCase()}`, 24 * 3600_000, async () => {
+      const url = `${WIKI_API}?action=parse&page=${encodeURIComponent(name)}&prop=wikitext&format=json&redirects=1`;
+      const data = await fetchJson(url);
+      const wikitext = data.parse?.wikitext?.["*"];
+      if (!wikitext) throw new Error("no such quest page");
+      return parseQuest(data.parse.title || name, wikitext);
+    });
+    res.json({ quest });
+  } catch (err) {
+    const missing = /no such quest|missingtitle|invalidtitle/i.test(err.message || "");
+    res.status(missing ? 404 : 502).json({
+      error: missing ? `The wiki has no quest page for "${name}".` : `Couldn't read that quest from the wiki (${err.message}).`,
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // GE Terminal — market data endpoints + AI market analysis.
 // ---------------------------------------------------------------------------
 
