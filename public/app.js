@@ -8,12 +8,7 @@
 // The sage's domains. Angles in degrees: -90 is straight up.
 const CLUSTERS = [
   {
-    name: "CLANS", sub: "events · bingo · botw", angle: -90,
-    opens: "clans",
-    prompt: "How do clans work in Old School RuneScape, and what makes a good clan event?",
-  },
-  {
-    name: "QUESTS", sub: "pick a quest · guides", angle: -135,
+    name: "QUESTS", sub: "pick a quest · guides", angle: -90,
     picker: "quests",
     prompt: "Which quests should every new member rush first, and why?",
   },
@@ -216,7 +211,6 @@ function buildLabels() {
       // Some clusters open a richer UI instead of firing a fixed prompt.
       if (c.picker && window.openPicker) window.openPicker(c.picker);
       else if (c.opens === "ge" && window.openGeTerminal) window.openGeTerminal();
-      else if (c.opens === "clans" && window.openClans) window.openClans();
       else sendMessage(c.prompt);
     });
     labelsRoot.appendChild(btn);

@@ -64,37 +64,6 @@ Clicking the **Exchange** constellation opens a Bloomberg-style **Grand Exchange
 
 Market data comes from [prices.runescape.wiki](https://prices.runescape.wiki) (`/latest`, `/1h`, `/timeseries`, `/mapping`), cached briefly server-side; the data endpoints use the free hiscores rate-limit bucket, and only the two AI actions draw on the model budget.
 
-### 🏰 Clan Hall
-
-A **Clans** constellation sits at the top of the chart. Any player can:
-
-- **Register a clan** — name + description, optionally linked to a **Discord invite** and/or a **[Wise Old Man](https://wiseoldman.net) group** (the group id is validated live and its name/member-count shown). Registration returns a **clan key**, saved on that device — only the key-holder can manage the clan's events.
-- **Discord announcements** — add a **Discord webhook** (at registration or later from *My events*) and RuneScribe posts to your server automatically: new events, bingo tile claims (with points and proof link), verifications, and every completed bingo line. The webhook URL is a posting capability, so it's stored server-side only — public responses never include it.
-- **Run events** — *Boss of the Week*, *Skill of the Week*, or **Bingo**: a 5×5 board (free centre) generated on the spot — **AI-conjured to your theme** when an API key is configured ("mid-level ironman friendly", "raids week"…), from a built-in task pool otherwise. Up to 5 active events per clan, 1–30 day durations.
-- **Browse** — every registered clan with its links and live events; bingo events show a live mini-board and open into **Bingo HQ**.
-
-#### 🎲 Bingo HQ
-
-Every bingo event opens as a full-screen event dashboard in the star-chart theme:
-
-- **Board styles** — the creator picks the board's pitch: **Mixed** (a bit of everything), or **PvM at high / mid / low level** (raids-and-Inferno down to Obor-and-Mole). Each style has its own curated task pool, and AI-generated boards follow the same pitch.
-- **Tiles with points & sprites** — each of the 24 tasks carries a point value (harder = more) and its OSRS Wiki item sprite; the centre is a free ★ tile. Points wear **drop-rarity colours** (common → legendary), so the board reads like a loot table.
-- **Celebrations** — landing a claim bursts stars from the tile; completing a line drops a full **✦ BINGO ✦** banner with a star-rain over the board (and the constellation draws itself in).
-- **Claims & verification** — any clan member claims a tile with their RSN (and an optional note); the **clan key-holder** verifies claims (◆) or removes bogus ones. Claimed tiles glow green, verified ones brighter.
-- **Proof screenshots** — attach a proof link when claiming (a Discord/Imgur screenshot URL); it renders as a thumbnail right in the tile detail (other hosts show as a link).
-- **Teams** — name 2–8 teams at event creation ("Bandos, Zamorak") and the board becomes a **race**: claims carry a team, tiles wear team-coloured tags, and a **Team Standings** panel tracks each team's points, tiles and completed lines.
-- **Roster, draft & random split** — for team bingos, players **sign up** on the board (a Roster panel). The organiser then splits the roster two ways: **🎲 Randomise** shuffles everyone into balanced teams in one click, or **⚔ Draft** opens a live **snake draft** — each team picks a player in turn, the order reversing every round so it stays fair, with an *autofill the rest* shortcut. Once teams are set, each player's claim is locked to their assigned team automatically, and the lineup is announced to Discord.
-- **Stats strip** — points earned / possible, tiles completed with a progress bar, verified count, bingo lines.
-- **Bingo lines** — all 5 rows, 5 columns, both diagonals, four corners and blackout, tracked live.
-- **Contributors** — a points leaderboard of who's claimed what.
-- **Live activity** — a feed of every claim and verification, with a ticking countdown to event end.
-- **Filters** — All / Open / Claimed / Verified, plus a 45-second auto-refresh so the board stays live while open.
-- **End it early** — the organiser (clan key-holder) can **End bingo** from the board header at any time (or *End* an event from the Clan Hall's *My events* list). Closing stops new claims and sign-ups but keeps the board, standings and the **winner** on display (top team, or top contributor for solo boards), and posts the result to Discord. Distinct from *Remove*, which deletes the event entirely.
-
-AI-generated boards also get AI-assigned points and sprites (the model emits `task | points | wiki_image` per tile).
-
-Clans persist server-side in `data/clans.json`, price alerts in `data/alerts.json`, and Web Push keys in `data/vapid.json` (single-instance JSON store — swap for a real DB when it outgrows that; the directory is gitignored). Edit tokens and webhook URLs never appear in public responses.
-
 ### 🔗 Link Account (RuneLite-powered personal advice)
 
 The **Link Account** launcher ties a real account to the chat:
@@ -166,7 +135,7 @@ RuneScribe is a single Node server that serves both the site and the API — dep
 - Set `ANTHROPIC_API_KEY` (and optionally `OSRS_LLM_MODEL`, `RATE_LIMIT_PER_10_MIN`) as env vars.
 - It respects `X-Forwarded-For` behind a proxy, so per-IP rate limiting works on hosted platforms.
 - **Set a spend limit + alert in the Anthropic Console before going public.**
-- **Give `data/` a persistent volume.** Player progress lives in a SQLite database (`data/runescribe.db`), alongside the JSON stores for clans/alerts. On hosts with an ephemeral filesystem (Render/Railway/Fly default), mount a persistent disk at `data/` or these reset on every redeploy. `DB_FILE` overrides the database path.
+- **Give `data/` a persistent volume.** Player progress lives in a SQLite database (`data/runescribe.db`), alongside the price-alert store and the auto-generated session/VAPID secrets. On hosts with an ephemeral filesystem (Render/Railway/Fly default), mount a persistent disk at `data/` or these reset on every redeploy. `DB_FILE` overrides the database path.
 
 Ready-made deploy configs are included: `render.yaml` (Render blueprint), `Procfile` (Railway/Heroku), and a `Dockerfile` (Fly/VPS/any container host). Copy `.env.example` to `.env` for local runs.
 
