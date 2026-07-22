@@ -488,8 +488,13 @@ body[data-core="scry"] .center-status { color: #e0a06a; }
   max-width: calc(100vw - 20px);
   overflow: hidden;
   text-overflow: ellipsis;
-  pointer-events: none;
 }
+.colophon > span[aria-hidden] { pointer-events: none; }
+.signout {
+  margin-left: 12px; color: var(--gold-dim); text-decoration: none;
+  border-bottom: 1px dotted var(--gold-faint); pointer-events: auto;
+}
+.signout:hover { color: var(--gold-bright); }
 
 /* --------------------------------------------------------------------------
    Scrollbars

@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { getProgress, getAllProgress, setProgress, deleteProgress, normRsn, isKind } from "./db.js";
+import { authEnabled, gate, installAuthRoutes } from "./auth.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
@@ -58,16 +59,26 @@ const SITE_ORIGIN = (process.env.SITE_ORIGIN || "").replace(/\/+$/, "");
 const originFor = (req) =>
   SITE_ORIGIN || `${req.headers["x-forwarded-proto"] || req.protocol}://${req.get("host")}`;
 
+// Single-owner Google sign-in. The gate protects everything below it; when
+// auth isn't configured (local dev) it's a no-op and the site runs open.
+app.use(gate);
+installAuthRoutes(app, originFor);
+
 const INDEX_HTML = fs.readFileSync(path.join(PUBLIC_DIR, "index.html"), "utf8");
 function renderIndex(req) {
-  return INDEX_HTML.replace(/%%ORIGIN%%/g, originFor(req));
+  const logout = authEnabled
+    ? `<a class="signout" href="/auth/logout" title="Sign out">sign out</a>`
+    : "";
+  return INDEX_HTML.replace(/%%ORIGIN%%/g, originFor(req)).replace(/%%AUTH%%/g, logout);
 }
 app.get("/", (req, res) => res.type("html").send(renderIndex(req)));
 
-// Crawler basics — point bots at the sitemap and keep them out of the API.
+// Crawler basics. When the site is private, keep every crawler out entirely.
 app.get("/robots.txt", (req, res) => {
   res.type("text/plain").send(
-    `User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${originFor(req)}/sitemap.xml\n`
+    authEnabled
+      ? "User-agent: *\nDisallow: /\n"
+      : `User-agent: *\nAllow: /\nDisallow: /api/\n\nSitemap: ${originFor(req)}/sitemap.xml\n`
   );
 });
 app.get("/sitemap.xml", (req, res) => {
@@ -2247,6 +2258,9 @@ process.on("uncaughtException", (err) => {
 app.listen(PORT, () => {
   console.log(`RuneScribe is listening on http://localhost:${PORT}`);
   console.log(`Model: ${MODEL}`);
+  console.log(authEnabled
+    ? "Auth: private — Google sign-in required (single owner)."
+    : "Auth: OPEN — set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and OWNER_EMAIL to lock the site.");
   if (!process.env.ANTHROPIC_API_KEY) {
     console.warn("Warning: ANTHROPIC_API_KEY is not set — chat requests will fail until it is.");
   }

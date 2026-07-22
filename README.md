@@ -147,6 +147,16 @@ Then open **http://localhost:3000** and ask away.
 | `VAPID_SUBJECT` | `mailto:admin@runescribe.example` | Contact for Web Push (set to your real mailto:/URL before launch) |
 | `SITE_ORIGIN` | — (derived from request) | Your public origin, e.g. `https://www.osrs.com` — used for canonical URL, social-preview tags, `robots.txt` and `sitemap.xml`. Set it in production so these are correct behind a proxy. |
 | `DB_FILE` | `data/runescribe.db` | Path to the SQLite progress database |
+| `GOOGLE_CLIENT_ID` | — | Google OAuth client ID. Set (with the two below) to make the site **private** — only `OWNER_EMAIL` may sign in. Unset ⇒ the site runs open. |
+| `GOOGLE_CLIENT_SECRET` | — | Google OAuth client secret |
+| `OWNER_EMAIL` | — | The one Google account allowed in |
+| `SESSION_SECRET` | — (auto-generated to `data/session-secret`) | Key that signs the session cookie |
+
+### Private, single-owner mode
+
+Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `OWNER_EMAIL` and the whole site locks behind **Google sign-in** — only that one email gets in; everyone else sees a "private tracker" login page. (Leave them unset for open/local dev.)
+
+To set up the Google credentials: in the [Google Cloud Console](https://console.cloud.google.com) → **APIs & Services → Credentials → Create OAuth client ID → Web application**. Add your site's callback as an **Authorized redirect URI**: `https://your-domain/auth/google/callback` (and `http://localhost:3000/auth/google/callback` for local testing). Copy the client ID + secret into the env vars, set `OWNER_EMAIL` to your Google address, and `SITE_ORIGIN` to your domain so the redirect URI matches. Sign out via the link in the footer.
 
 ## Deploying as a public website
 
